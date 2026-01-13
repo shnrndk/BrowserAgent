@@ -1,5 +1,5 @@
 # BrowserAgent
-An agent that can interact with browser to complete tasks
+An agent that can interact with browser to complete tasks. Our paper (https://arxiv.org/abs/2510.10666) has been accepted by TMLR 2025 with JC-award to present at ICML/ICLR/NeurIPS conferences.
 
 ### Resources
 
