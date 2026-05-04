@@ -41,7 +41,16 @@ for data in gen_data:
     input = content[-1]['input_seq']
     output = content[-1]['output_seq']
 
-    question = re.findall(r'Objective: (.*?)\nObservation', input)[0]
+    # Safely search for the question
+    question_matches = re.findall(r'Objective: (.*?)\nObservation', input)
+    
+    if question_matches:
+        question = question_matches[0]
+    else:
+        # Debugging: Print the problematic input so you can inspect its actual format
+        print(f"Warning: Could not extract question. Skipping this entry. Input snippet: {input[:200]!r}")
+        emp += 1 # Count as empty/unanswered
+        continue # Skip the rest of this loop iteration
 
     if not re.findall(r"```(.*?)```", output):
         answer = " "
@@ -65,4 +74,7 @@ print(f"问题数目：{len(gen_data)}")
 print(f"回答正确数目：{suc}")
 print(f"正确率：{suc/len(gen_data)}")
 print(f"未回答数目：{emp}")
-print(f"平均步数：{steps/suc}")
+if suc > 0:
+    print(f"平均步数：{steps/suc}")
+else:
+    print(f"平均步数：0")

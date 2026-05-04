@@ -7,6 +7,7 @@ import time
 from collections import deque
 from openai import OpenAI
 import argparse
+from dotenv import load_dotenv  # Added this import
 
 parser = argparse.ArgumentParser(description="Run multi-turn response generation with customizable file paths.")
 parser.add_argument('--data_path', type=str, 
@@ -21,15 +22,17 @@ parser.add_argument('--output_file', type=str,
 args = parser.parse_args()
 
 
-
-
 with open("sys_eval_prompt.txt","r",encoding="utf-8") as f:
     eval_prompt = f.read()
 
+# Load environment variables from a .env file
+load_dotenv()
 
-os.environ['OPENAI_API_KEY'] = ""
-
-client = OpenAI(base_url="https://api.openai.com/v1/")
+# Initialize the client using the key from the environment
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url="https://api.openai.com/v1/"
+)
 
 
 class RateLimiter:

@@ -62,7 +62,7 @@ To deploy the Wiki webpage locally, run the following Docker command and open ht
 docker run -d --name=wikipedia --volume=<your-path-to-downloaded-folder>/:/data -p 22015:80 ghcr.io/kiwix/kiwix-serve:3.3.0 wikipedia_en_all_maxi_2022-05.zim
 ```
 
-For public deployment, see our live example at [tigerai.ca/wiki/.../Landing](https://tigerai.ca/wiki/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing) and apply the Nginx template in this repo, updating `proxy_pass` to match your Docker port.
+For public deployment, see our live example at [tigerai.ca/wiki/.../Landing](http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing) and apply the Nginx template in this repo, updating `proxy_pass` to match your Docker port.
 
 
 ```conf

@@ -17,7 +17,7 @@ def call_tool_server(trajectory_ids: List[str], actions: List[str], finish: List
 
     extra_fields = [{
         "url": (
-            "https://tigerai.ca/wiki/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing"
+            "http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
         )
     }]
     data = {

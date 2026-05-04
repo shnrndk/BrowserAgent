@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from .base import BaseTool, register_tool, registered_tools
 from mini_webarena.env_worker import WikiQAEnv
 
-@ray.remote
+# @ray.remote
 class WikiEnvActor:
     def __init__(self, question: str, gt: str, url: str = None):
         print(f"[DEBUG] WikiEnvActor.__init__ - question: {question[:50]}..., gt: {gt[:50]}..., url: {url}")
@@ -39,7 +39,8 @@ class WikiEnvActor:
                     print(f"[WikiEnvActor] idle for >{self._ttl_seconds}s, exiting.")
                     try:
                         self.env.close()
-                        ray.actor.exit_actor()
+                        # ray.actor.exit_actor()
+                        pass
                     except Exception:
                         import os
                         os._exit(0)
@@ -152,7 +153,7 @@ class TextBrowserTool(BaseTool):
                 print(f"Error closing env for trajectory_id: {trajectory_id}: {e}")
             
             try:
-                ray.kill(actor, no_restart=True)
+                pass
             except Exception as e:
                 print(f"Error killing actor for trajectory_id: {trajectory_id}: {e}")
             1
@@ -199,19 +200,18 @@ class TextBrowserTool(BaseTool):
             question = extra_field.get("question", "placeholder")
             gt       = extra_field.get("gt",        "placeholder")
             url      = extra_field.get("url",       None)
-            actor = WikiEnvActor.remote(question, gt, url)
+            actor = WikiEnvActor(question, gt, url)
             self.save_env(trajectory_id, actor)
 
         # 2) Decide whether we are rendering the first page or taking a step.
-        fut = (
-            actor.start_env.remote()
+        result = (
+            actor.start_env()
             if action is None or action == ""
-            else actor.step_env.remote(action)
+            else actor.step_env(action)
         )
         #print(f"[DEBUG] TextBrowserTool.conduct_action_after - trajectory_id: {trajectory_id}, action: {action[:100] if action else 'None'}..., extra_field keys: {list(extra_field.keys())}")
 
         # 3) Wait for the Ray RPC to finish (blocks the calling thread only).
-        result = ray.get(fut)
         print(f"[DEBUG] TextBrowserTool.conduct_action_after - trajectory_id: {trajectory_id}, action: {action[:100] if action else 'None'}..., extra_field keys: {list(extra_field.keys())}")
 
         if isinstance(result, tuple):           # step_env
@@ -255,19 +255,15 @@ class TextBrowserTool(BaseTool):
             question = extra_field.get("question", "placeholder")
             gt = extra_field.get("gt", "placeholder")
             url = extra_field.get("url", None)
-            actor = WikiEnvActor.remote(question, gt, url)
+            actor = WikiEnvActor(question, gt, url)
             await self.asave_env(trajectory_id, actor)
         
         # 将 Ray 调用异步化
-        obj_ref = (
-            actor.start_env.remote()
-            if action is None or action == ""
-            else actor.step_env.remote(action)
-        )
-        
         try:
-            # 等待 Ray 对象引用，带超时
-            result = await asyncio.wait_for(obj_ref, timeout=300)
+            if action is None or action == "":
+                result = actor.start_env()
+            else:
+                result, _ = actor.step_env(action)
         except asyncio.TimeoutError:
             return "[TIMEOUT] (aconduct_action)", True, False
         except Exception as e:

@@ -251,7 +251,7 @@ def main():
                     "question": question,
                     "golden_answers": golden_answers,
                     "gt": answer,
-                    "url": "https://tigerai.ca/wiki/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing",
+                    "url": "http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing",
                 }
             }
 

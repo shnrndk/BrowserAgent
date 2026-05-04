@@ -45,25 +45,29 @@ class WikiQAEnv(object):
         from .create_dataset import TEMPLATES
         self.template_dict = TEMPLATES['qwen-instruct']
 
+        print(f"[TRACE] Starting WikiQAEnv init for URL: {url}", flush=True)
         self.env = ScriptBrowserEnv(
             headless=True,
             slow_mo=0,
             observation_type="accessibility_tree",
-            current_viewport_only=True,
+            current_viewport_only=False,
             viewport_size={"width": 1280, "height": 720},
-            save_trace_enabled=True,
+            save_trace_enabled=False,
             sleep_after_execution=0.0,
-            simple_mode=True,
-            page_load_timeout=60.0  # 增加到60秒等待时间
+            simple_mode=False,
         )
 
+        print(f"[TRACE] Created ScriptBrowserEnv. Now constructing prompt constructor.", flush=True)
         from .agent import construct_promptConstructor
-        self.prompt_constructor, self.tokenizer, _ = construct_promptConstructor("Qwen/Qwen2.5-14B-Instruct", None)
+        self.prompt_constructor, self.tokenizer, _ = construct_promptConstructor("./BrowserAgent-SFT", None)
         if url == None:
-            self.url = "https://tigerai.ca/wiki/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing"
+            self.url = "http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
         else:
             self.url = url
+            
+        print(f"[TRACE] Now calling reset_without_config(start_url={self.url})...", flush=True)
         obs, _ = self.env.reset_without_config(start_url=self.url)
+        print(f"[TRACE] reset_without_config completed.", flush=True)
         self.history = [{"role": "system"}, {"role": "user", "question": self.question, "url": self.url,
                                              "observation": obs[self.obs_modality], "previous_action": None}]
         # self.pure_obs_temp = ("<browser>Objective: {objective}\n\n"

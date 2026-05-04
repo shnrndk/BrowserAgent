@@ -1,6 +1,6 @@
-# import nest_asyncio
-# nest_asyncio.apply()
-# import asyncio
+import nest_asyncio
+import asyncio
+import signal
 import json
 import re
 import time
@@ -143,7 +143,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
         self.playwright = self.context_manager.start()
         self.browser = self.playwright.chromium.launch(
             headless=self.headless, slow_mo=self.slow_mo,
-            args=["--no-sandbox"]
+            args=["--no-sandbox", "--proxy-bypass-list=<-loopback>"]
         )
 
         if config_file:
@@ -202,7 +202,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
         for attempt in range(max_retries):
             try:
                 print(f"[DEBUG] 尝试导航到 {url} (第{attempt + 1}/{max_retries}次)")
-                page.goto(url, timeout=timeout)
+                page.goto(url, timeout=timeout, wait_until="domcontentloaded")
                 print(f"[DEBUG] 成功导航到 {url}")
                 return True
             except Exception as e:
@@ -362,25 +362,40 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
         # print("[DEBUG] Starting reset_without_config with storage_state=", storage_state, ", start_url=", start_url,
         #       ", geolocation=", geolocation)
 
+        print("[TRACE-ENV] Entering reset_without_config...", flush=True)
         super().reset()
         if self.reset_finished:
-            # print("[DEBUG] Exiting previous browser context.")
+            print("[TRACE-ENV] Exiting previous context manager.", flush=True)
             self.context_manager.__exit__()
 
-        # print("[DEBUG] Initializing Context Manager.")
+        print("[TRACE-ENV] Initializing Context Manager.", flush=True)
+        try:
+            import asyncio
+            asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            nest_asyncio.apply()
+        except Exception as e:
+            print(f"[TRACE-ENV] Could not apply nest_asyncio: {e}", flush=True)
+            
+        # Fix for Ray Actor + Playwright deadlock on Linux
+        try:
+            signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+        except Exception as e:
+            print(f"[TRACE-ENV] Could not reset SIGCHLD: {e}", flush=True)
+            
         self.context_manager = sync_playwright()
-        # print("[DEBUG] Initializing Playwright.")
+        print("[TRACE-ENV] Starting Playwright.", flush=True)
         self.playwright = self.context_manager.start()
 
-        # print("[DEBUG] Launching browser with headless=", self.headless, ", slow_mo=", self.slow_mo)
+        print("[TRACE-ENV] Launching browser.", flush=True)
         self.browser = self.playwright.chromium.launch(
             headless=self.headless,
             slow_mo=self.slow_mo,
-            args=["--no-sandbox"]
+            args=["--no-sandbox", "--proxy-bypass-list=<-loopback>"]
         )
 
-        # print("[DEBUG] Creating new browser context with viewport=", self.viewport_size, ", storage_state=",
-        #       storage_state, ", geolocation=", geolocation)
+        print("[TRACE-ENV] Creating browser context.", flush=True)
         self.context = self.browser.new_context(
             viewport=self.viewport_size,
             storage_state=storage_state,
@@ -389,21 +404,24 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
         )
 
         if self.save_trace_enabled:
-            # print("[DEBUG] Enabling tracing.")
+            print("[TRACE-ENV] Starting trace.", flush=True)
             self.context.tracing.start(screenshots=True, snapshots=True)
 
         if start_url:
-            # print("[DEBUG] Opening start URLs:", start_url)
+            print("[TRACE-ENV] Opening start URL(s).", flush=True)
             start_urls = start_url.split(" |AND| ")
             for url in start_urls:
-                # print("[DEBUG] Opening URL:", url)
+                print(f"[TRACE-ENV] New page for {url}.", flush=True)
                 page = self.context.new_page()
+                print("[TRACE-ENV] CDP Session.", flush=True)
                 client = page.context.new_cdp_session(page)
                 if self.text_observation_type == "accessibility_tree":
-                    # print("[DEBUG] Enabling accessibility tree.")
+                    print("[TRACE-ENV] Enabling Accessibility.", flush=True)
                     client.send("Accessibility.enable")
                 page.client = client  # type: ignore
+                print("[TRACE-ENV] Calling _navigate_with_retry.", flush=True)
                 self._navigate_with_retry(page, url)
+            print("[TRACE-ENV] Bringing page to front.", flush=True)
             self.page = self.context.pages[0]
             self.page.bring_to_front()
         else:

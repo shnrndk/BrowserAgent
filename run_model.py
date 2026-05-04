@@ -21,7 +21,7 @@ def call_tool_server(trajectory_ids: List[str], actions: List[str], finish: List
 
     extra_fields = [{
         "url": (
-            "https://tigerai.ca/wiki/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing"
+            "http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
         )
     }]
     data = {
@@ -32,11 +32,19 @@ def call_tool_server(trajectory_ids: List[str], actions: List[str], finish: List
     }
     
     try:
-        resp = requests.post(env_url, json=data, timeout=1200)
+        session = requests.Session()
+        session.trust_env = False
+        resp = session.post(env_url, json=data, timeout=1200)
         resp.raise_for_status()
         return resp.json()
     except Exception as e:
-        return {"error": str(e)}
+        content = ""
+        try:
+            if 'resp' in locals():
+                content = resp.text
+        except:
+            pass
+        return {"error": str(e), "content": content}
 
 user_prompt = """
 Objective: {}
@@ -114,7 +122,10 @@ def Get_multi_turn_response(question, answer):
     
     try:
         jsoned_data = call_tool_server([tar_id], [''], [False])
+        if 'error' in jsoned_data:
+            raise Exception(f"Server Error: {jsoned_data['error']} (Response: {jsoned_data.get('content', '')})")
         obs = jsoned_data['observations'][0]
+        print(obs)
         
         for i in range(30):
             try:
@@ -136,6 +147,8 @@ def Get_multi_turn_response(question, answer):
                 action_list.append({"input_seq": prompt, "output_seq": response})
                 
                 jsoned_data = call_tool_server([tar_id], [response], [False])
+                if 'error' in jsoned_data:
+                    raise Exception(f"Server Error: {jsoned_data['error']} (Response: {jsoned_data.get('content', '')})")
                 obs = jsoned_data['observations'][0]
                 
                 if "stop" in last_command:
