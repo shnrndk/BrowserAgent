@@ -208,3 +208,7 @@ __marimo__/
 
 BrowserAgent-SFT/
 benchmark/
+BrowserAgent-RFT/
+*.jsonl
+.vscode/
+*.tar.gz

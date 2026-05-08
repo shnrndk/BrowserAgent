@@ -185,14 +185,14 @@ Then you can run the following code to calculate the rule-based accuracy.
 ```bash
 conda activate browseragent
 cd BrowserAgent
-python val_answer.py /path/to/your/benchmark_path /path/to/your/previous_step_output_file
+python val_answer.py --data_path /path/to/your/benchmark_path --gen_file /path/to/your/previous_step_output_file
 ```
 
 Then you can run the following code to calculate the model-based accuracy.
 ```bash
 conda activate browseragent
 cd BrowserAgent
-python val_answer_model_based.py /path/to/your/benchmark_path /path/to/your/previous_step_output_file /path/to/your/output_file
+python val_answer_model_based.py --data_path /path/to/your/benchmark_path --gen_file /path/to/your/previous_step_output_file --output_file /path/to/your/output_file
 ```
 
 

@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 lock=threading.Lock()
 api_key = "sk-proj-1234567890"
-client = OpenAI(api_key = api_key, base_url= "http://localhost:5001/v1")
+client = OpenAI(api_key = api_key, base_url= "http://localhost:5001/v1", timeout=None)
 with open("system_prompt_click_nourl.txt","r",encoding = "utf-8") as f:
     system_prompt = f.read()
 
@@ -173,7 +173,7 @@ def Get_multi_turn_response(question, answer):
 
 # data_path="" 
 
-max_threads = 64  
+max_threads = 32  
 number_to_process = 99999
 
 def process_single_item(row):

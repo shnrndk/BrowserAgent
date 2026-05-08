@@ -3,8 +3,8 @@ from huggingface_hub import snapshot_download, hf_hub_download
 # 1. Download the Model (Choose SFT or RFT)
 print("Downloading model...")
 snapshot_download(
-    repo_id="TIGER-Lab/BrowserAgent-SFT", 
-    local_dir="./BrowserAgent-SFT"
+    repo_id="TIGER-Lab/BrowserAgent-RFT", 
+    local_dir="./BrowserAgent-RFT"
 )
 
 # 2. Download the Seed Data

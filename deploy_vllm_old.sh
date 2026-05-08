@@ -27,9 +27,8 @@ export CUDA_VISIBLE_DEVICES=0           # Specify which GPU(s) to use
 export NCCL_P2P_DISABLE=1               # Disable P2P communication if necessary
 export NCCL_IB_DISABLE=1                # Disable InfiniBand if you encounter related issues
 export VLLM_ALLOW_LONG_MAX_MODEL_LEN=1  # Allow overriding the 32k limit in config.json
-export VLLM_USE_V1=0 
-# export VLLM_ATTENTION_BACKEND=XFORMERS # Bypass Triton LLVM compiler bugs for large contexts
-# export VLLM_USE_TRITON_FLASH_ATTN=0    # Disable triton flash attention specifically
+export VLLM_ATTENTION_BACKEND=XFORMERS # Bypass Triton LLVM compiler bugs for large contexts
+export VLLM_USE_TRITON_FLASH_ATTN=0    # Disable triton flash attention specifically
 
 echo "🚀 Starting the VLLM server..."
 echo "📁 Model path: $MODEL_PATH"

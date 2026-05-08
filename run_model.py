@@ -11,7 +11,7 @@ import argparse
 
 lock=threading.Lock()
 api_key = "sk-proj-1234567890"
-client = OpenAI(api_key = api_key, base_url= "http://localhost:5001/v1")
+client = OpenAI(api_key = api_key, base_url= "http://localhost:5001/v1", timeout=None)
 with open("system_prompt_with_history_info.txt","r",encoding = "utf-8") as f:
     system_prompt = f.read()
 
@@ -182,8 +182,7 @@ def Get_multi_turn_response(question, answer):
     write_a_data(action_list)
 
 
-max_threads = 64 
-number_to_process = 99999
+max_threads = 32 
 
 def process_single_item(row):
     
@@ -197,12 +196,13 @@ if __name__ == "__main__":
     parser.add_argument('--data_path', type=str, 
                         default='', 
                         help='Path to the data file (e.g., /path/to/train.parquet)')
+    parser.add_argument('--num_samples', type=int, default=50, help='Number of trajectories to process')
     args = parser.parse_args()
 
     data_df = pd.read_parquet(args.data_path)
     data_df = data_df.sample(frac=1, random_state=42).reset_index(drop=True)
     
-    data_to_process = data_df.head(number_to_process)
+    data_to_process = data_df.head(args.num_samples)
     
     print(f"开始处理 {len(data_to_process)} 个数据项，使用 {max_threads} 个线程")
     

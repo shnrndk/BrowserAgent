@@ -7,7 +7,8 @@ import time
 from collections import deque
 from openai import OpenAI
 import argparse
-from dotenv import load_dotenv  # Added this import
+import traceback
+from dotenv import load_dotenv
 
 parser = argparse.ArgumentParser(description="Run multi-turn response generation with customizable file paths.")
 parser.add_argument('--data_path', type=str, 
@@ -21,19 +22,24 @@ parser.add_argument('--output_file', type=str,
                     help='Output file path for writing the data (e.g., /path/to/output.jsonl)')
 args = parser.parse_args()
 
-
 with open("sys_eval_prompt.txt","r",encoding="utf-8") as f:
     eval_prompt = f.read()
 
 # Load environment variables from a .env file
 load_dotenv()
 
-# Initialize the client using the key from the environment
-client = OpenAI(
+# Initialize the clients
+client_openai = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
     base_url="https://api.openai.com/v1/"
 )
 
+# DeepSeek client removed as it cannot be resolved on the node
+
+client_utsa = OpenAI(
+    api_key="gpustack_50e00c9281422bc5_0c0696dfcb1696d7635e58a2e56d6282",
+    base_url="http://10.246.100.230/v1"
+)
 
 class RateLimiter:
     def __init__(self, max_calls, period):
@@ -49,24 +55,30 @@ class RateLimiter:
             while self.calls and self.calls[0] <= now - self.period:
                 self.calls.popleft()
             if len(self.calls) >= self.max_calls:
-               
                 sleep_time = self.period - (now - self.calls[0])
                 await asyncio.sleep(sleep_time)
             self.calls.append(time.time())
 
-
 rate_limiter = RateLimiter(50, 60)
 
+def get_response(prompt, model="gpt-4o-mini", temperature=0):
+    # Route LLaMA to UTSA client, everything else to OpenAI
+    if model == "llama-3.3-70b-instruct-awq":
+        active_client = client_utsa
+    else:
+        active_client = client_openai
 
-def get_response(prompt , model = "gpt-4.1", temperature = 0):
-    response = client.chat.completions.create(
-        model = model,
-        messages = [{"role": "user", "content": prompt}],
-        temperature = temperature,
-        max_tokens = 1024
-    )
-    return response.choices[0].message.content
-
+    try:
+        response = active_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=1024
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error fetching from {model}: {e}")
+        return "Error"
 
 async def same(question, gt, ans, sem, save_writer):
     prompt = eval_prompt.format(question, gt, ans)
@@ -76,30 +88,32 @@ async def same(question, gt, ans, sem, save_writer):
             await rate_limiter.acquire()  
             return await asyncio.to_thread(get_response, prompt, model)
 
-    answer_gpt, answer_gemini, answer_claude = await asyncio.gather(
-        run("gpt-4.1"),
-        run("gemini-2.5-flash"),
-        run("claude-3-7-sonnet-20250219"),
+    # Added return_exceptions=True to prevent a full crash if one API drops
+    answer_gpt_mini, answer_gpt_4o, answer_llama = await asyncio.gather(
+        run("gpt-4o-mini"),
+        run("gpt-4o"),      # Replaced deepseek-chat with gpt-4o
+        run("llama-3.3-70b-instruct-awq"),
+        return_exceptions=True 
     )
 
-    print(answer_claude, answer_gemini, answer_gpt)
+    print(answer_llama, answer_gpt_4o, answer_gpt_mini)
 
-  
     save_writer.write({
         "question": question,
         "ground_truth": gt,
         "answer": ans,
-        "gpt-4.1": answer_gpt,
-        "gemini-2.5-flash": answer_gemini,
-        "claude-3-7-sonnet-20250219": answer_claude
+        "gpt-4o-mini": answer_gpt_mini,
+        "gpt-4o": answer_gpt_4o,             # Updated key to match the new model
+        "llama-3.3-70b-instruct-awq": answer_llama
     })
 
+    # Ensure we are checking string representations in case an exception was returned
+    responses = [str(x) for x in [answer_llama, answer_gpt_4o, answer_gpt_mini]]
+    yes_count = sum("yes" in x.lower() for x in responses)
     
-    yes_count = sum("yes" in x.lower() for x in [answer_claude, answer_gemini, answer_gpt])
     if yes_count >= 2:
         return 1
     return 0
-
 
 async def main():
     data_df = pd.read_parquet(args.data_path)
@@ -108,7 +122,6 @@ async def main():
         row["extra_info"]["question"]: row["extra_info"]["selected_answer"]
         for _, row in data_df.iterrows()
     }
-
 
     with jsonlines.open(args.gen_file) as reader:   
         gen_data = list(reader)
@@ -119,7 +132,6 @@ async def main():
 
     sem = asyncio.Semaphore(10)
 
-  
     with jsonlines.open(args.output_file, mode="w") as save_writer:
 
         async def process(data):
@@ -146,7 +158,7 @@ async def main():
                         suc += 1
                         steps += data['trajectory_length']
                 except Exception as e:
-                    print(f"错误: {e}")
+                    traceback.print_exc()
             else:
                 emp += 1
 
