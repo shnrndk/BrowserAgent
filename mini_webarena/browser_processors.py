@@ -846,6 +846,54 @@ class TextObervationProcessor(ObservationProcessor):
                 accessibility_tree
             )
             content = self.clean_accesibility_tree(content)
+
+            # --- ACTION-PRESERVING SEMANTIC PRUNING ---
+            lines = content.split('\n')
+            functional_nodes = []
+            semantic_nodes = []
+            
+            keywords = ['textbox', 'button', 'input', 'checkbox', 'combobox']
+            
+            for idx, line in enumerate(lines):
+                if not line.strip():
+                    continue
+                line_lower = line.lower()
+                is_functional = any(kw in line_lower for kw in keywords)
+                if is_functional:
+                    functional_nodes.append((idx, line))
+                else:
+                    semantic_nodes.append((idx, line))
+            
+            if semantic_nodes and context:
+                from sentence_transformers import SentenceTransformer
+                import numpy as np
+                import torch
+                
+                if not hasattr(self.__class__, 'st_model'):
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                    self.__class__.st_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+                    
+                query_emb = self.__class__.st_model.encode([context])[0]
+                sem_texts = [node[1] for node in semantic_nodes]
+                sem_embs = self.__class__.st_model.encode(sem_texts)
+                
+                sem_embs_norm = np.linalg.norm(sem_embs, axis=1)
+                query_emb_norm = np.linalg.norm(query_emb)
+                sims = np.dot(sem_embs, query_emb) / (sem_embs_norm * query_emb_norm + 1e-10)
+                
+                K = min(40, len(semantic_nodes))
+                top_indices = np.argsort(sims)[-K:]
+                
+                filtered_semantic_nodes = [semantic_nodes[i] for i in top_indices]
+            else:
+                filtered_semantic_nodes = semantic_nodes[:40] if semantic_nodes else []
+                
+            combined_nodes = functional_nodes + filtered_semantic_nodes
+            combined_nodes.sort(key=lambda x: x[0])
+            
+            content = "\n".join([node[1] for node in combined_nodes])
+            # ----------------------------------------
+
             self.obs_nodes_info = obs_nodes_info
             self.meta_data["obs_nodes_info"] = obs_nodes_info
 

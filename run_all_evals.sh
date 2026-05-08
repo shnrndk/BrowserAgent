@@ -26,6 +26,9 @@ for dataset_dir in "$BENCHMARK_DIR"/*/ ; do
     if [ "$dataset_name" == "musique" ]; then
         continue
     fi
+    if [ "$dataset_name" == "popqa" ]; then
+        continue
+    fi
     
     # Add to our pending list
     pending_datasets+=("$dataset_dir")

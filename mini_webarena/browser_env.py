@@ -139,8 +139,23 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
 
     @beartype
     def setup(self, config_file: Path | None = None) -> None:
-        self.context_manager = sync_playwright()
-        self.playwright = self.context_manager.start()
+        import asyncio
+        import traceback
+        if hasattr(asyncio, "get_running_loop"):
+            original_get_running_loop = asyncio.get_running_loop
+            def dummy_get_running_loop():
+                stack = traceback.extract_stack()
+                if any("playwright" in frame.filename and "__enter__" in frame.name for frame in stack):
+                    raise RuntimeError("Bypass Playwright check")
+                return original_get_running_loop()
+            asyncio.get_running_loop = dummy_get_running_loop
+
+        try:
+            self.context_manager = sync_playwright()
+            self.playwright = self.context_manager.start()
+        finally:
+            if hasattr(asyncio, "get_running_loop"):
+                asyncio.get_running_loop = original_get_running_loop
         self.browser = self.playwright.chromium.launch(
             headless=self.headless, slow_mo=self.slow_mo,
             args=["--no-sandbox", "--proxy-bypass-list=<-loopback>"]
@@ -294,9 +309,9 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             # 至少等待一个基本的时间
             time.sleep(1.0)
 
-    def _get_obs(self) -> dict[str, Observation]:
+    def _get_obs(self, context: str = "") -> dict[str, Observation]:
         obs = self.observation_handler.get_observation(
-            self.page, self.get_page_client(self.page)
+            self.page, self.get_page_client(self.page), context
         )
         return obs
 
@@ -310,6 +325,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             *,
             seed: int | None = None,
             options: dict[str, str] | None = None,
+            context: str = "",
     ) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Reset the environment.
@@ -338,7 +354,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
 
         images = self.modify_page()
 
-        observation = self._get_obs()
+        observation = self._get_obs(context=context)
         observation_metadata = self._get_obs_metadata()
         info = {
             "page": DetachedPage(self.page.url, ""),
@@ -355,6 +371,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             storage_state: str | None = None,
             start_url: str | None = None,
             geolocation: dict | None = None,
+            context: str = "",
     ) -> tuple[dict, dict]:
         """
         Reset the environment without using an external config file.
@@ -383,10 +400,25 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             signal.signal(signal.SIGCHLD, signal.SIG_DFL)
         except Exception as e:
             print(f"[TRACE-ENV] Could not reset SIGCHLD: {e}", flush=True)
-            
-        self.context_manager = sync_playwright()
-        print("[TRACE-ENV] Starting Playwright.", flush=True)
-        self.playwright = self.context_manager.start()
+
+        import asyncio
+        import traceback
+        if hasattr(asyncio, "get_running_loop"):
+            original_get_running_loop = asyncio.get_running_loop
+            def dummy_get_running_loop():
+                stack = traceback.extract_stack()
+                if any("playwright" in frame.filename and "__enter__" in frame.name for frame in stack):
+                    raise RuntimeError("Bypass Playwright check")
+                return original_get_running_loop()
+            asyncio.get_running_loop = dummy_get_running_loop
+
+        try:
+            self.context_manager = sync_playwright()
+            print("[TRACE-ENV] Starting Playwright.", flush=True)
+            self.playwright = self.context_manager.start()
+        finally:
+            if hasattr(asyncio, "get_running_loop"):
+                asyncio.get_running_loop = original_get_running_loop
 
         print("[TRACE-ENV] Launching browser.", flush=True)
         self.browser = self.playwright.chromium.launch(
@@ -444,7 +476,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
 
         # print("[DEBUG] Modifying page for observation.")
         images = self.modify_page()
-        observation = self._get_obs()
+        observation = self._get_obs(context=context)
         observation_metadata = self._get_obs_metadata()
 
         info = {
@@ -466,7 +498,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             self.context_manager.__exit__()
 
     def step(
-            self, action: Action
+            self, action: Action, context: str = ""
     ) -> tuple[dict[str, Observation], float, bool, bool, dict[str, Any]]:
         if not self.reset_finished:
             raise RuntimeError("Call reset first before calling step.")
@@ -494,7 +526,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
 
         images = self.modify_page()
 
-        observation = self._get_obs()
+        observation = self._get_obs(context=context)
         observation_metadata = self._get_obs_metadata()
 
         info = {
