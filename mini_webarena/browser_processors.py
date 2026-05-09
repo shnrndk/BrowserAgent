@@ -848,6 +848,10 @@ class TextObervationProcessor(ObservationProcessor):
             content = self.clean_accesibility_tree(content)
 
             # --- ACTION-PRESERVING SEMANTIC PRUNING ---
+            import time
+            start_rag_time = time.time()
+            pre_filter_len = len(content)
+            
             lines = content.split('\n')
             functional_nodes = []
             semantic_nodes = []
@@ -892,6 +896,22 @@ class TextObervationProcessor(ObservationProcessor):
             combined_nodes.sort(key=lambda x: x[0])
             
             content = "\n".join([node[1] for node in combined_nodes])
+            post_filter_len = len(content)
+            rag_time = time.time() - start_rag_time
+            
+            try:
+                import json
+                with open("rag_metrics.jsonl", "a") as f:
+                    f.write(json.dumps({
+                        "rag_overhead_ms": rag_time * 1000,
+                        "pre_filter_chars": pre_filter_len,
+                        "post_filter_chars": post_filter_len,
+                        "compression_ratio": 1 - (post_filter_len / max(pre_filter_len, 1)),
+                        "semantic_nodes": len(semantic_nodes),
+                        "functional_nodes": len(functional_nodes)
+                    }) + "\n")
+            except Exception:
+                pass
             # ----------------------------------------
 
             self.obs_nodes_info = obs_nodes_info
