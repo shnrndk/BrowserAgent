@@ -112,6 +112,11 @@ def write_a_data(action_list, filename=None):
 import uuid
 
 def Get_multi_turn_response(question, answer):
+    import time
+    start_episode_time = time.time()
+    total_inference_time = 0.0
+    invalid_action_count = 0
+    
     tar_id = str(uuid.uuid4())
     history = "\n"
     obj = question
@@ -137,7 +142,11 @@ def Get_multi_turn_response(question, answer):
             prompt = system_prompt + "\n\n" + real_prompt
             
             try:
+                start_infer = time.time()
                 response = get_response(prompt, temperature=0)
+                infer_time = time.time() - start_infer
+                total_inference_time += infer_time
+                
                 last_command = extract_command(response)
                 last_info = extract_conclusion(response)
                 
@@ -150,6 +159,9 @@ def Get_multi_turn_response(question, answer):
                 if 'error' in jsoned_data:
                     raise Exception(f"Server Error: {jsoned_data['error']} (Response: {jsoned_data.get('content', '')})")
                 obs = jsoned_data['observations'][0]
+                
+                if "The action is invalid" in obs:
+                    invalid_action_count += 1
                 
                 if "stop" in last_command:
                     call_tool_server([tar_id], [response], [True])
@@ -167,16 +179,31 @@ def Get_multi_turn_response(question, answer):
         error_msg = str(e)
         print(f"{e}")
 
+    episode_duration = time.time() - start_episode_time
+    avg_infer_latency = total_inference_time / max(len(action_list), 1)
+
     if action_list:
         action_list[-1]["is_error"] = is_error
         action_list[-1]["error_msg"] = error_msg
+        action_list[-1]["metrics"] = {
+            "total_episode_duration": episode_duration,
+            "avg_infer_latency": avg_infer_latency,
+            "steps_to_completion": len(action_list),
+            "invalid_action_count": invalid_action_count
+        }
     else:
 
         action_list.append({
             "input_seq": f"question: {question}",
             "output_seq": "error",
             "is_error": is_error,
-            "error_msg": error_msg
+            "error_msg": error_msg,
+            "metrics": {
+                "total_episode_duration": episode_duration,
+                "avg_infer_latency": avg_infer_latency,
+                "steps_to_completion": 0,
+                "invalid_action_count": invalid_action_count
+            }
         })
 
     write_a_data(action_list)

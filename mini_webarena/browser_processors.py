@@ -846,6 +846,25 @@ class TextObervationProcessor(ObservationProcessor):
                 accessibility_tree
             )
             content = self.clean_accesibility_tree(content)
+            
+            # --- BASELINE METRICS LOGGING ---
+            import time
+            import json
+            try:
+                pre_filter_len = len(content)
+                with open("rag_metrics.jsonl", "a") as f:
+                    f.write(json.dumps({
+                        "rag_overhead_ms": 0,
+                        "pre_filter_chars": pre_filter_len,
+                        "post_filter_chars": pre_filter_len,
+                        "compression_ratio": 0.0,
+                        "semantic_nodes": 0,
+                        "functional_nodes": 0
+                    }) + "\n")
+            except Exception:
+                pass
+            # ----------------------------------------
+
             self.obs_nodes_info = obs_nodes_info
             self.meta_data["obs_nodes_info"] = obs_nodes_info
 
