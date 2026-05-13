@@ -15,7 +15,7 @@ completion = client.chat.completions.create(
         'index': 0,
         'question': 'who got the first nobel prize in physics',
         'split': 'test',
-        'url': 'http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing'}
+        'url': 'http://127.0.0.1:8888/wiki/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing'}
 )
 
 print(completion.choices[0].message.content)

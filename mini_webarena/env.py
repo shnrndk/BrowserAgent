@@ -106,7 +106,7 @@ class WikiQAEnv(BaseLanguageBasedEnv):
         # print("[DEBUG] WikiQAEnv init Checkpoint 5")
         from .agent import construct_promptConstructor
         self.prompt_constructor, self.tokenizer, _ = construct_promptConstructor("Qwen/Qwen2.5-14B-Instruct", None)
-        self.url = "http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
+        self.url = "http://127.0.0.1:8888/wiki/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
 
         # print("[DEBUG] WikiQAEnv init Checkpoint 6")
         if self.browser_api == "async":
