@@ -1,6 +1,7 @@
 import json
 import lxml
 import re
+from urllib.parse import unquote
 from collections import defaultdict
 from typing import Any, TypedDict, Union
 
@@ -30,6 +31,35 @@ from .utils import (
 from .html_tools import HtmlParser, basic_attrs, print_html_object
 
 IN_VIEWPORT_RATIO_THRESHOLD = 0.6
+
+# ---------------------------------------------------------------------------
+# URL-injection helpers
+# ---------------------------------------------------------------------------
+# Matches the Kiwix viewer path pattern and extracts the terminal article slug.
+# Examples:
+#   http://192.168.1.1:22015/viewer#wikipedia_en_all_maxi_2022-05/A/Christopher_Nolan
+#     → "Christopher_Nolan"
+#   /A/Film_director   → "Film_director"
+#   ../A/Help:Contents → "Help:Contents"
+_KIWIX_PATH_RE = re.compile(
+    r'(?:[#/])(?:[A-Za-z]{1,5}/)?([^/#?]+)$'
+)
+
+def extract_clean_url(href: str) -> str:
+    """Strip a full Kiwix/Wikipedia URL down to the terminal article slug.
+
+    Returns an empty string when the href is not a navigable article link
+    (e.g. anchors-only like '#section', javascript: links, or empty).
+    """
+    if not href or href.startswith('javascript:') or href.startswith('mailto:'):
+        return ''
+    # Fragment-only anchor on the same page — not a new article
+    if href.startswith('#') and '/' not in href:
+        return ''
+    m = _KIWIX_PATH_RE.search(href)
+    if m:
+        return unquote(m.group(1))
+    return ''
 
 def merge_consecutive_static_text_nodes(accessibility_tree):
     """
@@ -539,10 +569,43 @@ class TextObervationProcessor(ObservationProcessor):
             info: BrowserInfo,
             client: CDPSession,
             current_viewport_only: bool,
+            page=None,
     ) -> AccessibilityTree:
         accessibility_tree: AccessibilityTree = client.send(
             "Accessibility.getFullAXTree", {}
         )["nodes"]
+
+        # Build a backendNodeId → clean_href map using a SINGLE CDP call.
+        # DOM.getDocument(depth=-1) fetches the full DOM tree in one round-trip;
+        # we then walk it in Python. This avoids O(n_links) CDP calls.
+        backend_id_to_href: dict[str, str] = {}
+        if page is not None:
+            try:
+                full_doc = client.send("DOM.getDocument", {"depth": -1, "pierce": True})
+
+                def _walk_dom(node: dict) -> None:
+                    node_name = node.get("nodeName", "").upper()
+                    if node_name == "A":
+                        attrs = node.get("attributes", [])
+                        attr_dict = dict(zip(attrs[::2], attrs[1::2]))
+                        href = attr_dict.get("href", "")
+                        if href:
+                            backend_node_id = str(node.get("backendNodeId", ""))
+                            clean = extract_clean_url(href)
+                            if clean and backend_node_id:
+                                backend_id_to_href[backend_node_id] = clean
+                    for child in node.get("children", []):
+                        _walk_dom(child)
+
+                _walk_dom(full_doc["root"])
+            except Exception:
+                pass
+
+        # Attach the href to each link node so parse_accessibility_tree can use it.
+        for node in accessibility_tree:
+            node["_href_clean"] = backend_id_to_href.get(
+                str(node.get("backendDOMNodeId", "")), ""
+            )
 
         # a few nodes are repeated in the accessibility tree
         seen_ids = set()
@@ -664,6 +727,12 @@ class TextObervationProcessor(ObservationProcessor):
                 role = node["role"]["value"]
                 name = node["name"]["value"]
                 node_str = f"[{obs_node_id}] {role} {repr(name)}"
+
+                # Inject the clean URL for link nodes to eliminate semantic ambiguity.
+                if role == "link":
+                    href_clean = node.get("_href_clean", "")
+                    if href_clean:
+                        node_str += f" (→ {href_clean})"
                 properties = []
                 for property in node.get("properties", []):
                     try:
@@ -836,6 +905,7 @@ class TextObervationProcessor(ObservationProcessor):
                 browser_info,
                 client,
                 current_viewport_only=self.current_viewport_only,
+                page=page,
             )
 
             # 2. 做一次“合并连续 staticText”预处理
