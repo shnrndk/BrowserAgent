@@ -1,0 +1,144 @@
+diff --git a/mini_webarena/browser_processors.py b/mini_webarena/browser_processors.py
+index 113078e..f8a4201 100644
+--- a/mini_webarena/browser_processors.py
++++ b/mini_webarena/browser_processors.py
+@@ -846,20 +846,69 @@ class TextObervationProcessor(ObservationProcessor):
+                 accessibility_tree
+             )
+             content = self.clean_accesibility_tree(content)
+-            
+-            # --- BASELINE METRICS LOGGING ---
++
++            # --- ACTION-PRESERVING SEMANTIC PRUNING ---
+             import time
+-            import json
++            start_rag_time = time.time()
++            pre_filter_len = len(content)
++            
++            lines = content.split('\n')
++            functional_nodes = []
++            semantic_nodes = []
++            
++            keywords = ['textbox', 'button', 'input', 'checkbox', 'combobox']
++            
++            for idx, line in enumerate(lines):
++                if not line.strip():
++                    continue
++                line_lower = line.lower()
++                is_functional = any(kw in line_lower for kw in keywords)
++                if is_functional:
++                    functional_nodes.append((idx, line))
++                else:
++                    semantic_nodes.append((idx, line))
++            
++            if semantic_nodes and context:
++                from sentence_transformers import SentenceTransformer
++                import numpy as np
++                import torch
++                
++                if not hasattr(self.__class__, 'st_model'):
++                    device = "cuda" if torch.cuda.is_available() else "cpu"
++                    self.__class__.st_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
++                    
++                query_emb = self.__class__.st_model.encode([context])[0]
++                sem_texts = [node[1] for node in semantic_nodes]
++                sem_embs = self.__class__.st_model.encode(sem_texts)
++                
++                sem_embs_norm = np.linalg.norm(sem_embs, axis=1)
++                query_emb_norm = np.linalg.norm(query_emb)
++                sims = np.dot(sem_embs, query_emb) / (sem_embs_norm * query_emb_norm + 1e-10)
++                
++                K = min(40, len(semantic_nodes))
++                top_indices = np.argsort(sims)[-K:]
++                
++                filtered_semantic_nodes = [semantic_nodes[i] for i in top_indices]
++            else:
++                filtered_semantic_nodes = semantic_nodes[:40] if semantic_nodes else []
++                
++            combined_nodes = functional_nodes + filtered_semantic_nodes
++            combined_nodes.sort(key=lambda x: x[0])
++            
++            content = "\n".join([node[1] for node in combined_nodes])
++            post_filter_len = len(content)
++            rag_time = time.time() - start_rag_time
++            
+             try:
+-                pre_filter_len = len(content)
++                import json
+                 with open("rag_metrics.jsonl", "a") as f:
+                     f.write(json.dumps({
+-                        "rag_overhead_ms": 0,
++                        "rag_overhead_ms": rag_time * 1000,
+                         "pre_filter_chars": pre_filter_len,
+-                        "post_filter_chars": pre_filter_len,
+-                        "compression_ratio": 0.0,
+-                        "semantic_nodes": 0,
+-                        "functional_nodes": 0
++                        "post_filter_chars": post_filter_len,
++                        "compression_ratio": 1 - (post_filter_len / max(pre_filter_len, 1)),
++                        "semantic_nodes": len(semantic_nodes),
++                        "functional_nodes": len(functional_nodes)
+                     }) + "\n")
+             except Exception:
+                 pass
+diff --git a/mini_webarena/env.py b/mini_webarena/env.py
+index f9ea46c..9ed055f 100644
+--- a/mini_webarena/env.py
++++ b/mini_webarena/env.py
+@@ -106,7 +106,7 @@ class WikiQAEnv(BaseLanguageBasedEnv):
+         # print("[DEBUG] WikiQAEnv init Checkpoint 5")
+         from .agent import construct_promptConstructor
+         self.prompt_constructor, self.tokenizer, _ = construct_promptConstructor("Qwen/Qwen2.5-14B-Instruct", None)
+-        self.url = "http://127.0.0.1:8888/wiki/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
++        self.url = "http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
+ 
+         # print("[DEBUG] WikiQAEnv init Checkpoint 6")
+         if self.browser_api == "async":
+diff --git a/mini_webarena/env_worker.py b/mini_webarena/env_worker.py
+index 6641360..a3a75a6 100644
+--- a/mini_webarena/env_worker.py
++++ b/mini_webarena/env_worker.py
+@@ -61,12 +61,13 @@ class WikiQAEnv(object):
+         from .agent import construct_promptConstructor
+         self.prompt_constructor, self.tokenizer, _ = construct_promptConstructor("./BrowserAgent-SFT", None)
+         if url == None:
+-            self.url = "http://127.0.0.1:8888/wiki/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
++            self.url = "http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
+         else:
+             self.url = url
+             
+         print(f"[TRACE] Now calling reset_without_config(start_url={self.url})...", flush=True)
+-        obs, _ = self.env.reset_without_config(start_url=self.url)
++        current_context = self.question
++        obs, _ = self.env.reset_without_config(start_url=self.url, context=current_context)
+         print(f"[TRACE] reset_without_config completed.", flush=True)
+         self.history = [{"role": "system"}, {"role": "user", "question": self.question, "url": self.url,
+                                              "observation": obs[self.obs_modality], "previous_action": None}]
+@@ -114,10 +115,14 @@ class WikiQAEnv(object):
+             action_extracted = create_none_action()
+             # 确保页面状态稳定后再获取观察结果
+             self.env._wait_for_page_ready()
+-            obs = self.env._get_obs()
++            agent_memory = " ".join([h.get("pred", "") for h in self.history if h["role"] == "assistant" and h.get("pred")])
++            current_context = self.question + " " + agent_memory
++            obs = self.env._get_obs(context=current_context)
+         else:
+             try:
+-                obs, _, terminated, _, _ = self.env.step(action_extracted)
++                agent_memory = " ".join([h.get("pred", "") for h in self.history if h["role"] == "assistant" and h.get("pred")])
++                current_context = self.question + " " + agent_memory
++                obs, _, terminated, _, _ = self.env.step(action_extracted, context=current_context)
+                 # step方法内部已经调用了_wait_for_page_ready，这里不需要重复调用
+             except Exception as e:
+                 print("######################### Error in run step, action invalid")
+@@ -125,7 +130,9 @@ class WikiQAEnv(object):
+                 action_extracted = create_none_action()
+                 # 确保页面状态稳定后再获取观察结果
+                 self.env._wait_for_page_ready()
+-                obs = self.env._get_obs()
++                agent_memory = " ".join([h.get("pred", "") for h in self.history if h["role"] == "assistant" and h.get("pred")])
++                current_context = self.question + " " + agent_memory
++                obs = self.env._get_obs(context=current_context)
+                 validity = False
+ 
+         self.history.append(

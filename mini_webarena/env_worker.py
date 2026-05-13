@@ -66,7 +66,8 @@ class WikiQAEnv(object):
             self.url = url
             
         print(f"[TRACE] Now calling reset_without_config(start_url={self.url})...", flush=True)
-        obs, _ = self.env.reset_without_config(start_url=self.url)
+        current_context = self.question
+        obs, _ = self.env.reset_without_config(start_url=self.url, context=current_context)
         print(f"[TRACE] reset_without_config completed.", flush=True)
         self.history = [{"role": "system"}, {"role": "user", "question": self.question, "url": self.url,
                                              "observation": obs[self.obs_modality], "previous_action": None}]
@@ -114,10 +115,14 @@ class WikiQAEnv(object):
             action_extracted = create_none_action()
             # 确保页面状态稳定后再获取观察结果
             self.env._wait_for_page_ready()
-            obs = self.env._get_obs()
+            agent_memory = " ".join([h.get("pred", "") for h in self.history if h["role"] == "assistant" and h.get("pred")])
+            current_context = self.question + " " + agent_memory
+            obs = self.env._get_obs(context=current_context)
         else:
             try:
-                obs, _, terminated, _, _ = self.env.step(action_extracted)
+                agent_memory = " ".join([h.get("pred", "") for h in self.history if h["role"] == "assistant" and h.get("pred")])
+                current_context = self.question + " " + agent_memory
+                obs, _, terminated, _, _ = self.env.step(action_extracted, context=current_context)
                 # step方法内部已经调用了_wait_for_page_ready，这里不需要重复调用
             except Exception as e:
                 print("######################### Error in run step, action invalid")
@@ -125,7 +130,9 @@ class WikiQAEnv(object):
                 action_extracted = create_none_action()
                 # 确保页面状态稳定后再获取观察结果
                 self.env._wait_for_page_ready()
-                obs = self.env._get_obs()
+                agent_memory = " ".join([h.get("pred", "") for h in self.history if h["role"] == "assistant" and h.get("pred")])
+                current_context = self.question + " " + agent_memory
+                obs = self.env._get_obs(context=current_context)
                 validity = False
 
         self.history.append(

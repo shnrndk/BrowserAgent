@@ -109,10 +109,11 @@ class WikiQAEnv(BaseLanguageBasedEnv):
         self.url = "http://127.0.0.1:8888/wiki/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing"
 
         # print("[DEBUG] WikiQAEnv init Checkpoint 6")
+        current_context = self.question
         if self.browser_api == "async":
-            obs, info = asyncio.run(self.env.reset_without_config(start_url=self.url))
+            obs, info = asyncio.run(self.env.reset_without_config(start_url=self.url, context=current_context))
         else:
-            obs, info = self.env.reset_without_config(start_url=self.url)
+            obs, info = self.env.reset_without_config(start_url=self.url, context=current_context)
         # reset_without_config方法内部已经调用了_wait_for_page_ready，确保页面加载完成
 
         # print("[DEBUG] WikiQAEnv init Checkpoint 7")
@@ -145,10 +146,11 @@ class WikiQAEnv(BaseLanguageBasedEnv):
         self.answer_made = False
 
         # Reset the browser environment
+        current_context = self.question
         if self.browser_api == "async":
-            obs, info = asyncio.run(self.env.reset_without_config(start_url=self.url))
+            obs, info = asyncio.run(self.env.reset_without_config(start_url=self.url, context=current_context))
         else:
-            obs, info = self.env.reset_without_config(start_url=self.url)
+            obs, info = self.env.reset_without_config(start_url=self.url, context=current_context)
         # reset_without_config方法内部已经调用了_wait_for_page_ready，确保页面加载完成
 
         # Rebuild initial history
@@ -185,10 +187,11 @@ class WikiQAEnv(BaseLanguageBasedEnv):
         self.answer_similarity = 0.0
         self.answer_made = False
 
+        current_context = self.question
         if self.browser_api == "async":
-            obs, info = asyncio.run(self.env.reset_without_config(start_url=url))
+            obs, info = asyncio.run(self.env.reset_without_config(start_url=url, context=current_context))
         else:
-            obs, info = self.env.reset_without_config(start_url=url)
+            obs, info = self.env.reset_without_config(start_url=url, context=current_context)
         # reset_without_config方法内部已经调用了_wait_for_page_ready，确保页面加载完成
 
         self.history = [
@@ -256,7 +259,9 @@ class WikiQAEnv(BaseLanguageBasedEnv):
         self.history.append({"role": "assistant", "pred": action, "reward": reward, "action_extracted": action_extracted})
         # Step 2. execute action
         print(action_extracted)
-        obs, _, terminated, _, info = self.env.step(action_extracted)
+        agent_memory = " ".join([h.get("pred", "") for h in self.history if h["role"] == "assistant" and h.get("pred")])
+        current_context = self.question + " " + agent_memory
+        obs, _, terminated, _, info = self.env.step(action_extracted, context=current_context)
         # step方法内部已经调用了_wait_for_page_ready，确保页面加载完成
         self.current_step += 1
         self.done = self.current_step >= self.max_steps or terminated
