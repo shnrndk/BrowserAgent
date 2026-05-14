@@ -68,8 +68,13 @@ echo "OPENAI_API_KEY=your_api_key_here" > .env
 
 ### Step 2 — Download Benchmark Data
 
-Datasets are stored in the `./benchmark/` directory in Parquet format.  
-Source: [TIGER-Lab/BrowserAgent-SeedData](https://huggingface.co/datasets/TIGER-Lab/BrowserAgent-SeedData)
+> ⚠️ **The `benchmark/` directory is NOT included in the git repo** (it is gitignored due to file size). You must download it separately before running any evaluation.
+
+```bash
+python download_hf.py
+```
+
+This downloads both the model weights and the benchmark parquet files from HuggingFace into `./benchmark/`:
 
 ```
 benchmark/

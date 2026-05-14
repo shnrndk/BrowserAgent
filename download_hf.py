@@ -15,3 +15,17 @@ snapshot_download(
     local_dir="./benchmark"
 )
 print("Done!")
+
+print("Downloading model...")
+snapshot_download(
+    repo_id="TIGER-Lab/BrowserAgent-SFT", 
+    local_dir="./BrowserAgent-SFT"
+)
+
+# 2. Download the Seed Data
+print("Downloading benchmark data...")
+snapshot_download(
+    repo_id="TIGER-Lab/BrowserAgent-SeedData", 
+    repo_type="dataset",
+    local_dir="./benchmark"
+)

@@ -2,36 +2,42 @@
 
 This file documents the reproduced evaluation numbers compared against the original paper's reported figures, and includes results for our proposed improvement — **Lexical URL Injection ("Hover State" Protocol)**.
 
-### Regenerate All Tables (One Command)
+---
+
+## 🔁 Regenerating All Tables
+
+> ⚠️ **Prerequisite:** The `benchmark/` directory is **not included in the git repo** (gitignored). If you haven't already, download it first:
+> ```bash
+> python download_hf.py
+> ```
+
+Once benchmark data is available, regenerate all tables with a single command:
 
 ```bash
+# Rule-based (EM) only — fast, no API keys needed
 bash reproduce_all_tables.sh
-```
 
-To enable LLM judging (requires configuring `OPENAI_API_KEY` in a `.env` file at project root):
-```bash
+# Rule-based + LLM-judge — requires OPENAI_API_KEY in .env
 bash reproduce_all_tables.sh --use-llm
 ```
 
 This produces:
-
 - `evaluation_summary_baseline.csv` — Table 1 (SFT/RFT baseline)
 - `evaluation_summary_novel.csv` — Table 2 (URL injection improvement)
 
-> **How to regenerate these numbers individually:**
+> **To regenerate each table individually:**
 > ```bash
-> # Ensure OPENAI_API_KEY is in your .env file first!
 > python evaluate_all.py --results-dir ./results --use-llm
 > python evaluate_all.py --results-dir ./results_novel --use-llm
 > ```
 
 ---
 
-## Main Results: SFT vs. RFT Baselines (Reproduced)
+ Main Results: SFT vs. RFT Baselines (Reproduced)
 
 Numbers are evaluated on pre-generated trajectories stored in `./results/`. Two evaluation modes are reported:
 - **Rule-based** — exact/partial string match via `val_answer.py`
-- **LLM-judge** — semantic correctness via `val_answer_model_based.py` (Llama-3.3-70B)
+- **LLM-judge** — semantic correctness via `val_answer_model_based.py` (3-model consensus: GPT-4o-mini, GPT-4o, Llama-3.3-70B)
 
 ### SFT Model Results
 
@@ -89,7 +95,7 @@ Our rule-based metric corresponds to the paper's EM; our LLM-judge uses Llama-3.
 
 ---
 
-## Table 2 — Proposed Improvement: Lexical URL Injection
+## Table 3 — Proposed Improvement: Lexical URL Injection
 
 ### The Idea
 
@@ -192,7 +198,4 @@ As a zero-shot modification to an already fine-tuned model, the gain is limited.
 | `val_answer_model_based.py` | LLM-judge evaluation (3-model consensus: GPT-4o-mini, GPT-4o, Llama-3.3-70B) |
 | `evaluate_all.py` | Runs both evaluators across all result files in a directory |
 | `reproduce_all_tables.sh` | **Single entry point** — regenerates all tables in one command |
-
-
-
 
