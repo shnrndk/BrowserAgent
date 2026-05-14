@@ -97,23 +97,47 @@ Our rule-based metric corresponds to the paper's EM; our LLM-judge uses Llama-3.
 
 ## Table 3 — Proposed Improvement: Lexical URL Injection
 
-### The Idea
+> 💻 **Implementation:** [`url-injection` branch](https://github.com/TIGER-AI-Lab/BrowserAgent/tree/url-injection) — [commit `f74a7cb`](https://github.com/TIGER-AI-Lab/BrowserAgent/commit/f74a7cbce3a434cf459468a149cce9d516839a4a)
 
-Standard WebArena accessibility trees present hyperlinks as plain text (e.g., `[42] link 'Director'`). The agent has no information about where the link leads, causing **semantic ambiguity** — the agent wastes steps clicking wrong links or timing out. We call this the "hover state" problem.
+### The Problem
 
-**Our fix:** At observation-parse time, we extract the underlying `href` attribute from the DOM via a single-pass Chrome DevTools Protocol (CDP) call and inject the terminal URL slug directly into the accessibility tree node:
+When a BrowserAgent reads a Wikipedia page, it sees hyperlinks as plain text labels like:
 
 ```
-Before: [42] link 'Director'
-After:  [42] link 'Director' (URL: Christopher_Nolan)
+[42] link 'Director'
+[57] link 'Award'
+[91] link 'Film'
 ```
+
+The agent has **no idea where any of these links lead**. To find the article on Christopher Nolan, it might click `[42] link 'Director'` — only to land on the generic "Film director" disambiguation page. Now it has wasted a step and must backtrack. This is the **"hover state" problem**: a human would hover the mouse and see the destination URL (`/wiki/Christopher_Nolan`) before deciding to click — the agent is denied this basic affordance.
+
+On multi-hop questions (e.g. *"Who directed the film that won Best Picture in 2018?"*), this blind clicking compounds across every hop. The agent can exhaust its 30-step budget navigating to wrong pages and produce no answer at all.
+
+### The Hypothesis
+
+By programmatically injecting each link's destination URL slug into the accessibility tree at observation time — mimicking the information a human gets from hovering — the agent can:
+
+1. **Avoid blind clicks** — it can read `(URL: Christopher_Nolan)` and pick the right link directly
+2. **Reduce wasted steps** — no more landing on wrong pages and backtracking through disambiguation
+3. **Answer more questions** — fewer step-budget timeouts on deep multi-hop chains
 
 ### Implementation
 
-The change is localized to `mini_webarena/browser_processors.py`:
-- `extract_clean_url()` — maps raw Kiwix/Wikipedia hrefs to clean article slugs
-- `parse_accessibility_tree()` — annotates all `link` role nodes with their destination URL
-- Single-pass CDP call for href extraction — avoids per-node performance bottlenecks
+The change is entirely within `mini_webarena/browser_processors.py` (see [commit `f74a7cb`](https://github.com/TIGER-AI-Lab/BrowserAgent/commit/f74a7cbce3a434cf459468a149cce9d516839a4a)):
+
+```
+Before: [42] link 'Director'
+        [57] link 'Award'
+        [91] link 'Film'
+
+After:  [42] link 'Director'  (URL: Christopher_Nolan)
+        [57] link 'Award'     (URL: Academy_Award_for_Best_Picture)
+        [91] link 'Film'      (URL: Oppenheimer_(film))
+```
+
+- **`extract_clean_url()`** — converts raw Kiwix/Wikipedia hrefs to clean terminal article slugs, stripping encoding artifacts and redirect paths
+- **`parse_accessibility_tree()`** — annotates every `link` role node with its destination slug, using a single-pass Chrome DevTools Protocol (CDP) call for efficiency
+
 
 ### Results: Baseline vs. Lexical URL Injection (EM + LLM-judge)
 
