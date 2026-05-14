@@ -6,12 +6,17 @@ This file documents the reproduced evaluation numbers compared against the origi
 
 ## 🔁 Regenerating All Tables
 
-> ⚠️ **Prerequisite:** The `benchmark/` directory is **not included in the git repo** (gitignored). If you haven't already, download it first:
-> ```bash
-> python download_hf.py
-> ```
+> ⚠️ **Prerequisites before running evaluation:**
+> 1. Download the benchmark datasets (gitignored, not in repo):
+>    ```bash
+>    python download_hf.py
+>    ```
+> 2. Install the evaluation dependencies:
+>    ```bash
+>    pip install -r requirementsEval.txt
+>    ```
 
-Once benchmark data is available, regenerate all tables with a single command:
+Once prerequisites are satisfied, regenerate all tables with a single command:
 
 ```bash
 # Rule-based (EM) only — fast, no API keys needed

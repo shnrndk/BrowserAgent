@@ -102,42 +102,40 @@ benchmark/
 └── bamboogle/test-00000-of-00001.parquet
 ```
 
-### Step 3 — Reproduce All Tables (One Command)
+### Step 3 — Install Evaluation Dependencies
+
+The evaluation scripts have their own lightweight dependencies separate from the main training stack:
 
 ```bash
-# Regenerate Table 1 from pre-saved SFT/RFT trajectories
-python evaluate_all.py --results-dir ./results --use-llm
+pip install -r requirementsEval.txt
 ```
 
-This runs **both** the rule-based (`val_answer.py`) and LLM-judge (`val_answer_model_based.py`) evaluators over all 12 result files and outputs `evaluation_summary.csv`.
+### Step 4 — Reproduce All Tables
 
-> **Note on LLM Judging:** The `--use-llm` flag requires your `OPENAI_API_KEY` to be populated in the `.env` file (from Step 1) to utilize the GPT-4o/GPT-4o-mini consensus judges alongside the local Llama-3.3-70B judge endpoint. To skip LLM evaluation and run the rule-based (EM) pipeline only, simply omit the flag:
+Run a single script to evaluate pre-saved trajectories and regenerate all result tables:
+
+```bash
+# Rule-based (EM) evaluation only — fast, no API keys needed
+bash reproduce_all_tables.sh
+
+# Rule-based + LLM-judge — requires OPENAI_API_KEY in .env
+bash reproduce_all_tables.sh --use-llm
+```
+
+This runs both the rule-based (`val_answer.py`) and LLM-judge (`val_answer_model_based.py`) evaluators over all pre-saved trajectories and outputs:
+- `evaluation_summary_baseline.csv` — Table 1 (SFT/RFT baseline)
+- `evaluation_summary_novel.csv` — Table 2 (URL injection improvement)
+
+> 📄 Full reproduced numbers with paper comparison: **[RESULTS.md](./RESULTS.md)**
+
+> **To regenerate individual tables:**
 > ```bash
-> python evaluate_all.py --results-dir ./results
+> python evaluate_all.py --results-dir ./results --use-llm --output evaluation_summary_baseline.csv
+> python evaluate_all.py --results-dir ./results_novel --use-llm --output evaluation_summary_novel.csv
 > ```
 
 ---
 
-## 📊 Reproducing the Paper's Tables
-
-To easily reproduce both tables at once, use the unified wrapper script:
-```bash
-bash reproduce_all_tables.sh --use-llm
-```
-
-Alternatively, to regenerate each table individually:
-
-### Table 1 — Main SFT/RFT Results
-
-```bash
-python evaluate_all.py --results-dir ./results --use-llm --output evaluation_summary_baseline.csv
-```
-
-### Table 2 — Proposed Improvement (URL Injection vs. Baseline)
-
-```bash
-python evaluate_all.py --results-dir ./results_novel --use-llm --output evaluation_summary_novel.csv
-```
 
 > 📄 Full reproduced numbers with paper comparison: **[RESULTS.md](./RESULTS.md)**
 
