@@ -126,11 +126,27 @@ If you want to regenerate trajectories from scratch rather than using the pre-sa
 - A local `kiwix-serve` instance of Wikipedia (`wikipedia_en_all_maxi_2022-05.zim`) running on port `22015`
 - An Nginx proxy (config: `custom_nginx.conf`) to replicate WebArena's DOM structure
 
-### Terminal 1 — Deploy the LLM via vLLM (port 5001)
+### Terminal 1 — Deploy the LLM via vLLM
 
+**For Fine-tuned Models (SFT/RFT on port 5001):**
 ```bash
 conda activate browseragent
 bash deploy_vllm.sh /path/to/BrowserAgent-SFT
+```
+
+**For Basic Qwen Instruct (Baseline on port 8000):**
+```bash
+conda activate browseragent
+python -m vllm.entrypoints.openai.api_server \
+    --model ./models/Qwen2.5-7B-Instruct \
+    --served-model-name qwen2.5-7b-instruct \
+    --tensor-parallel-size 1 \
+    --max-model-len 131072 \
+    --port 8000 \
+    --gpu-memory-utilization 0.9 \
+    --dtype bfloat16 \
+    --enforce-eager \
+    --api-key sk-proj-1234567890
 ```
 
 ### Terminal 2 — Start the Tool / Browser Server (port 30810)
@@ -142,11 +158,19 @@ bash verl-tool/examples/train/wikiRL/wikiRL_server.sh
 
 ### Terminal 3 — Run the Agent
 
+**For Fine-tuned Models:**
 ```bash
 conda activate browseragent
 # Run on a single benchmark (e.g., NQ test set)
 python run_model.py --data_path benchmark/nq/test-00000-of-00001.parquet
 ```
+
+**For Qwen Instruct Baseline (all datasets at once):**
+```bash
+conda activate browseragent
+bash run_all_evals_base_instruct.sh
+```
+*(Or individually run `python run_model_base.py --data_path <path>`)*
 
 Results are saved as `*_webarena_results_*.jsonl`. Pass the output directory to `evaluate_all.py` to score them.
 
@@ -202,11 +226,23 @@ BrowserAgent/
 
 ---
 
+## ⚖️ LLM Multi-Judge Consensus Evaluation
+
+For semantic-based semantic evaluation, the pipeline utilizes `val_answer_model_based.py`. To maximize judgment robusteness and reduce individual model biases, it implements a **majority-vote consensus mechanism** consisting of three distinct LLM judges:
+
+- **GPT-4o-mini**
+- **GPT-4o**
+- **Llama-3.3-70b-instruct-awq**
+
+An agent's final answer is scored as **correct (1)** if and only if at least two out of the three judges reach a "Yes" consensus regarding semantic equivalence with the ground truth.
+
+---
+
 ## 🔑 Fixed Seeds & Reproducibility Notes
 
 - **Temperature:** `0.0` for all trajectory generation (deterministic decoding)
 - **Dependencies:** Pinned in `requirements.txt` (Playwright 1.32.1, lxml 5.1.0, etc.)
 - **Environment:** Evaluated against a local `kiwix-serve` Wikipedia instance routed through a local Nginx proxy to replicate the WebArena DOM structure
-- **LLM Judge:** Llama-3.3-70B via UTSA cluster endpoint; minor stochasticity (< 1%) expected
+- **LLM Judge Endpoint:** Mixed multi-model voting via OpenAI API & UTSA local Llama endpoint.
 
 ---

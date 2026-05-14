@@ -73,7 +73,7 @@ for dataset_dir in "${pending_datasets[@]}" ; do
     before_files=$(ls -1 *_webarena_results.jsonl 2>/dev/null | wc -l)
     
     # Run the model WITHOUT the unsupported flags
-    python run_model.py --data_path "$target_file" --num_samples "$SAMPLE_SIZE"
+    python run_model_base.py --data_path "$target_file" --num_samples "$SAMPLE_SIZE"
     
     # Wait briefly to ensure file I/O is completely flushed
     sleep 2

@@ -1,0 +1,13 @@
+result_file,method,dataset,dataset_path,rule_total,rule_correct,rule_accuracy,rule_unanswered,rule_avg_steps,llm_total,llm_correct,llm_accuracy,llm_unanswered,llm_avg_steps
+musique_webarena_results_sft.jsonl,sft,musique,benchmark/musique/validation-00000-of-00001.parquet,200,35,17.50%,91,3.914285714285714,200,45,22.50%,91,3.73
+bamboogle_webarena_results_sft.jsonl,sft,bamboogle,benchmark/bamboogle/test-00000-of-00001.parquet,125,33,26.40%,67,6.0,125,35,28.00%,67,5.83
+musique_webarena_results_rft.jsonl,rft,musique,benchmark/musique/validation-00000-of-00001.parquet,200,29,14.50%,95,4.793103448275862,200,43,21.50%,95,5.19
+2wiki_webarena_results_rft.jsonl,rft,2wiki,benchmark/2wiki/validation-00000-of-00001.parquet,200,90,45.00%,43,4.488888888888889,200,106,53.00%,43,4.46
+bamboogle_webarena_results_rft.jsonl,rft,bamboogle,benchmark/bamboogle/test-00000-of-00001.parquet,125,39,31.20%,52,5.435897435897436,125,47,37.60%,52,5.77
+nq_webarena_results_rft.jsonl,rft,nq,benchmark/nq/test-00000-of-00001.parquet,200,84,42.00%,49,2.869047619047619,200,104,52.00%,49,3.09
+popqa_webarena_results_sft.jsonl,sft,popqa,benchmark/popqa/test-00000-of-00001.parquet,200,88,44.00%,57,3.2613636363636362,200,100,50.00%,57,3.07
+hotpot_webarena_results_rft.jsonl,rft,hotpot,benchmark/hotpot/validation-00000-of-00001.parquet,200,92,46.00%,57,3.641304347826087,200,112,56.00%,57,3.6
+nq_webarena_results_sft.jsonl,sft,nq,benchmark/nq/test-00000-of-00001.parquet,200,78,39.00%,47,3.1794871794871793,200,103,51.50%,47,3.7
+2wiki_webarena_results_sft.jsonl,sft,2wiki,benchmark/2wiki/validation-00000-of-00001.parquet,200,91,45.50%,50,4.912087912087912,200,113,56.50%,50,4.81
+hotpot_webarena_results_sft.jsonl,sft,hotpot,benchmark/hotpot/validation-00000-of-00001.parquet,200,85,42.50%,59,3.8823529411764706,200,106,53.00%,59,3.72
+popqa_webarena_results_rft.jsonl,rft,popqa,benchmark/popqa/test-00000-of-00001.parquet,200,77,38.50%,50,3.7012987012987013,200,94,47.00%,50,3.49
