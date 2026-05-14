@@ -111,9 +111,9 @@ The change is localized to `mini_webarena/browser_processors.py`:
 
 ### Results: Baseline vs. Lexical URL Injection (EM + LLM-judge)
 
-> Trajectories are in `./results_base_model/`. Regenerate with:
+> Trajectories are in `./results_novel/`. Regenerate with:
 > ```bash
-> python reproduce_all_tables.sh
+> bash reproduce_all_tables.sh
 > ```
 
 #### SFT Models

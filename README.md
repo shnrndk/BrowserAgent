@@ -99,18 +99,23 @@ This runs **both** the rule-based (`val_answer.py`) and LLM-judge (`val_answer_m
 
 ## 📊 Reproducing the Paper's Tables
 
-The evaluation pipeline is structured so that **each table maps to a single command**:
+To easily reproduce both tables at once, use the unified wrapper script:
+```bash
+bash reproduce_all_tables.sh --use-llm
+```
+
+Alternatively, to regenerate each table individually:
 
 ### Table 1 — Main SFT/RFT Results
 
 ```bash
-python evaluate_all.py --results-dir ./results --use-llm --output evaluation_summary.csv
+python evaluate_all.py --results-dir ./results --use-llm --output evaluation_summary_baseline.csv
 ```
 
 ### Table 2 — Proposed Improvement (URL Injection vs. Baseline)
 
 ```bash
-python evaluate_all.py --results-dir ./resultsV2 --use-llm --output evaluation_summary_v2.csv
+python evaluate_all.py --results-dir ./results_novel --use-llm --output evaluation_summary_novel.csv
 ```
 
 > 📄 Full reproduced numbers with paper comparison: **[RESULTS.md](./RESULTS.md)**
@@ -119,17 +124,36 @@ python evaluate_all.py --results-dir ./resultsV2 --use-llm --output evaluation_s
 
 ## 🖥️ Running the Full Pipeline (Optional)
 
-If you want to regenerate trajectories from scratch rather than using the pre-saved artifacts, the system requires **3 services running in parallel**.
+If you want to regenerate trajectories from scratch rather than using the pre-saved artifacts, the system requires **4 services running in parallel**.
 
-### Prerequisites
+### 📥 Step 1: Prerequisites & Weights Setup
 
-- A fine-tuned model checkpoint from HuggingFace:
-  - [TIGER-Lab/BrowserAgent-SFT](https://huggingface.co/TIGER-Lab/BrowserAgent-SFT)
-  - [TIGER-Lab/BrowserAgent-RFT](https://huggingface.co/TIGER-Lab/BrowserAgent-RFT)
-- A local `kiwix-serve` instance of Wikipedia (`wikipedia_en_all_maxi_2022-05.zim`) running on port `22015`
-- An Nginx proxy (config: `custom_nginx.conf`) to replicate WebArena's DOM structure
+Ensure you've downloaded the model weights and benchmark datasets from HuggingFace using the provided helper script:
 
-### Terminal 1 — Deploy the LLM via vLLM
+```bash
+conda activate browseragent
+# Downloads both BrowserAgent-RFT weights and seed benchmark parquet datasets
+python download_hf.py
+```
+
+Ensure you also have:
+- A local `kiwix-serve` instance of Wikipedia (`wikipedia_en_all_maxi_2022-05.zim`) running on port `22015`.
+- An Nginx proxy (config: `custom_nginx.conf`) active to replicate WebArena's internal structure.
+
+### 🎮 Step 2: Terminal Service Orchestration
+
+You must run each of the following services in a separate terminal.
+
+#### Terminal 0 — Start the Kiwix Content Proxy
+
+This runs the localized Wikipedia content proxy designed to dynamically fix Kiwix navigation schemas and adapt the search tree for compatibility with the WebArena agent parsing pipeline:
+
+```bash
+conda activate browseragent
+python proxy.py
+```
+
+#### Terminal 1 — Deploy the LLM via vLLM
 
 **For Fine-tuned Models (SFT/RFT on port 5001):**
 ```bash
@@ -152,30 +176,37 @@ python -m vllm.entrypoints.openai.api_server \
     --api-key sk-proj-1234567890
 ```
 
-### Terminal 2 — Start the Tool / Browser Server (port 30810)
+#### Terminal 2 — Start the Tool / Browser Server (port 30810)
+
+The main environment coordinator that interfaces the agent's actions with Playwright instances:
 
 ```bash
 conda activate browseragent
 bash verl-tool/examples/train/wikiRL/wikiRL_server.sh
 ```
 
-### Terminal 3 — Run the Agent
+#### Terminal 3 — Run the Agent Trajectory Evaluation
 
-**For Fine-tuned Models:**
-```bash
-conda activate browseragent
-# Run on a single benchmark (e.g., NQ test set)
-python run_model.py --data_path benchmark/nq/test-00000-of-00001.parquet
-```
+**Running Fine-tuned Models:**
+- **Single Dataset Run:** Test navigation on one specific benchmark file (e.g., Natural Questions test set):
+  ```bash
+  conda activate browseragent
+  python run_model.py --data_path benchmark/nq/test-00000-of-00001.parquet
+  ```
+- **Full Suite Run:** Automatically run across all 6 benchmarks in sequence:
+  ```bash
+  conda activate browseragent
+  bash run_all_evals.sh
+  ```
 
-**For Qwen Instruct Baseline (all datasets at once):**
+**Running Qwen Instruct Baseline:**
 ```bash
 conda activate browseragent
 bash run_all_evals_base_instruct.sh
 ```
 *(Or individually run `python run_model_base.py --data_path <path>`)*
 
-Results are saved as `*_webarena_results_*.jsonl`. Pass the output directory to `evaluate_all.py` to score them.
+All trajectory outputs are saved as `*_webarena_results_*.jsonl` in the root directory. Once complete, run `reproduce_all_tables.sh` to evaluate the accuracy.
 
 ---
 
@@ -199,7 +230,7 @@ BrowserAgent/
 │   └── ...
 │
 ├── 📊 results/                      # Pre-generated SFT/RFT trajectories (Table 1)
-├── 📊 resultsV2/                    # URL-injection trajectories (Table 2)
+├── 📊 results_novel/                # URL-injection trajectories (Table 2)
 ├── 📋 benchmark/                    # Benchmark datasets (Parquet)
 │
 ├── 🔧 Training Pipeline

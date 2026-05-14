@@ -21,11 +21,6 @@ for dataset_dir in "$BENCHMARK_DIR"/*/ ; do
     dataset_dir=${dataset_dir%/}
     dataset_name=$(basename "$dataset_dir")
     
-    # Skip specific directories
-    if [ "$dataset_name" == "2wiki" ] || [ "$dataset_name" == "bamboogle" ] || [ "$dataset_name" == "hotpot" ] || [ "$dataset_name" == "musique" ]; then
-        continue
-    fi
-    
     # Add to our pending list
     pending_datasets+=("$dataset_dir")
 done
