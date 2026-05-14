@@ -2,9 +2,26 @@
 
 This file documents the reproduced evaluation numbers compared against the original paper's reported figures, and includes results for our proposed improvement — **Lexical URL Injection ("Hover State" Protocol)**.
 
-> **How to regenerate these numbers:**
+### Regenerate All Tables (One Command)
+
+```bash
+bash reproduce_all_tables.sh
+```
+
+To enable llm judging
+```bash
+bash reproduce_all_tables.sh --use-llm
+```
+
+This produces:
+
+- `evaluation_summary_baseline.csv` — Table 1 (SFT/RFT baseline)
+- `evaluation_summary_urlinjection.csv` — Table 2 (URL injection improvement)
+
+> **How to regenerate these numbers baseline and url injection by each:**
 > ```bash
 > python evaluate_all.py --results-dir ./results --use-llm
+> python evaluate_all.py --results-dir ./results_novel --use-llm
 > ```
 
 ---
@@ -174,16 +191,6 @@ As a zero-shot modification to an already fine-tuned model, the gain is limited.
 | `val_answer_model_based.py` | LLM-judge evaluation (3-model consensus: GPT-4o-mini, GPT-4o, Llama-3.3-70B) |
 | `evaluate_all.py` | Runs both evaluators across all result files in a directory |
 | `reproduce_all_tables.sh` | **Single entry point** — regenerates all tables in one command |
-
-### Regenerate All Tables (One Command)
-
-```bash
-bash reproduce_all_tables.sh
-```
-
-This produces:
-- `evaluation_summary_baseline.csv` — Table 1 (SFT/RFT baseline)
-- `evaluation_summary_urlinjection.csv` — Table 2 (URL injection improvement)
 
 
 
