@@ -8,7 +8,7 @@ This file documents the reproduced evaluation numbers compared against the origi
 bash reproduce_all_tables.sh
 ```
 
-To enable llm judging
+To enable LLM judging (requires configuring `OPENAI_API_KEY` in a `.env` file at project root):
 ```bash
 bash reproduce_all_tables.sh --use-llm
 ```
@@ -16,10 +16,11 @@ bash reproduce_all_tables.sh --use-llm
 This produces:
 
 - `evaluation_summary_baseline.csv` — Table 1 (SFT/RFT baseline)
-- `evaluation_summary_urlinjection.csv` — Table 2 (URL injection improvement)
+- `evaluation_summary_novel.csv` — Table 2 (URL injection improvement)
 
-> **How to regenerate these numbers baseline and url injection by each:**
+> **How to regenerate these numbers individually:**
 > ```bash
+> # Ensure OPENAI_API_KEY is in your .env file first!
 > python evaluate_all.py --results-dir ./results --use-llm
 > python evaluate_all.py --results-dir ./results_novel --use-llm
 > ```

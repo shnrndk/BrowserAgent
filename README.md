@@ -61,6 +61,9 @@ conda create -n browseragent python=3.10 -y
 conda activate browseragent
 pip install -r requirements.txt
 playwright install chromium
+
+# Create a .env file to hold your OpenAI API Key (required for the LLM Judge)
+echo "OPENAI_API_KEY=your_api_key_here" > .env
 ```
 
 ### Step 2 — Download Benchmark Data
@@ -87,7 +90,7 @@ python evaluate_all.py --results-dir ./results --use-llm
 
 This runs **both** the rule-based (`val_answer.py`) and LLM-judge (`val_answer_model_based.py`) evaluators over all 12 result files and outputs `evaluation_summary.csv`.
 
-> **Note:** `--use-llm` requires a running Llama-3.3-70B judge endpoint. To skip LLM evaluation and use rule-based only, omit the flag:
+> **Note on LLM Judging:** The `--use-llm` flag requires your `OPENAI_API_KEY` to be populated in the `.env` file (from Step 1) to utilize the GPT-4o/GPT-4o-mini consensus judges alongside the local Llama-3.3-70B judge endpoint. To skip LLM evaluation and run the rule-based (EM) pipeline only, simply omit the flag:
 > ```bash
 > python evaluate_all.py --results-dir ./results
 > ```

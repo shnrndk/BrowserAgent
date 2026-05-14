@@ -75,7 +75,7 @@ def main():
                 parquet_files.append(os.path.join(root, file))
 
     search_pattern = os.path.join(args.results_dir, "*_webarena_results*.jsonl")
-    jsonl_files = glob.glob(search_pattern)
+    jsonl_files = [f for f in glob.glob(search_pattern) if not f.endswith("_llm_eval.jsonl")]
     if not jsonl_files:
         print(f"No result files found in {args.results_dir} matching *_webarena_results*.jsonl.")
         return

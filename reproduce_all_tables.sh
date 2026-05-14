@@ -31,16 +31,16 @@ python evaluate_all.py \
 
 echo ""
 echo "============================================================"
-echo "Table 2: URL Injection Improvement (./results_base_model/)"
+echo "Table 2: URL Injection Improvement (./results_novel/)"
 echo "============================================================"
 python evaluate_all.py \
-    --results-dir ./results_base_model \
-    --output evaluation_summary_urlinjection.csv \
+    --results-dir ./results_novel \
+    --output evaluation_summary_novel.csv \
     $LLM_FLAG
 
 echo ""
 echo "============================================================"
 echo "✅ All done!"
 echo "  Table 1 → evaluation_summary_baseline.csv"
-echo "  Table 2 → evaluation_summary_urlinjection.csv"
+echo "  Table 2 → evaluation_summary_novel.csv"
 echo "============================================================"
