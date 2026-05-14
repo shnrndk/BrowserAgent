@@ -5,10 +5,10 @@
         "dataset":"musique",
         "dataset_path":"benchmark\/musique\/validation-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":1,
-        "rule_accuracy":"0.50%",
-        "rule_unanswered":163,
-        "rule_avg_steps":5.0
+        "rule_correct":35,
+        "rule_accuracy":"17.50%",
+        "rule_unanswered":91,
+        "rule_avg_steps":3.9142857143
     },
     {
         "result_file":"bamboogle_webarena_results_sft.jsonl",
@@ -16,10 +16,10 @@
         "dataset":"bamboogle",
         "dataset_path":"benchmark\/bamboogle\/test-00000-of-00001.parquet",
         "rule_total":125,
-        "rule_correct":9,
-        "rule_accuracy":"7.20%",
-        "rule_unanswered":105,
-        "rule_avg_steps":6.5555555556
+        "rule_correct":33,
+        "rule_accuracy":"26.40%",
+        "rule_unanswered":67,
+        "rule_avg_steps":6.0
     },
     {
         "result_file":"musique_webarena_results_rft.jsonl",
@@ -27,10 +27,10 @@
         "dataset":"musique",
         "dataset_path":"benchmark\/musique\/validation-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":1,
-        "rule_accuracy":"0.50%",
-        "rule_unanswered":181,
-        "rule_avg_steps":4.0
+        "rule_correct":29,
+        "rule_accuracy":"14.50%",
+        "rule_unanswered":95,
+        "rule_avg_steps":4.7931034483
     },
     {
         "result_file":"2wiki_webarena_results_rft.jsonl",
@@ -38,10 +38,10 @@
         "dataset":"2wiki",
         "dataset_path":"benchmark\/2wiki\/validation-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":7,
-        "rule_accuracy":"3.50%",
-        "rule_unanswered":189,
-        "rule_avg_steps":10.5714285714
+        "rule_correct":90,
+        "rule_accuracy":"45.00%",
+        "rule_unanswered":43,
+        "rule_avg_steps":4.4888888889
     },
     {
         "result_file":"bamboogle_webarena_results_rft.jsonl",
@@ -49,10 +49,10 @@
         "dataset":"bamboogle",
         "dataset_path":"benchmark\/bamboogle\/test-00000-of-00001.parquet",
         "rule_total":125,
-        "rule_correct":1,
-        "rule_accuracy":"0.80%",
-        "rule_unanswered":116,
-        "rule_avg_steps":8.0
+        "rule_correct":39,
+        "rule_accuracy":"31.20%",
+        "rule_unanswered":52,
+        "rule_avg_steps":5.4358974359
     },
     {
         "result_file":"nq_webarena_results_rft.jsonl",
@@ -60,10 +60,10 @@
         "dataset":"nq",
         "dataset_path":"benchmark\/nq\/test-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":10,
-        "rule_accuracy":"5.00%",
-        "rule_unanswered":181,
-        "rule_avg_steps":8.4
+        "rule_correct":84,
+        "rule_accuracy":"42.00%",
+        "rule_unanswered":49,
+        "rule_avg_steps":2.869047619
     },
     {
         "result_file":"popqa_webarena_results_sft.jsonl",
@@ -71,10 +71,10 @@
         "dataset":"popqa",
         "dataset_path":"benchmark\/popqa\/test-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":1,
-        "rule_accuracy":"0.50%",
-        "rule_unanswered":192,
-        "rule_avg_steps":2.0
+        "rule_correct":88,
+        "rule_accuracy":"44.00%",
+        "rule_unanswered":57,
+        "rule_avg_steps":3.2613636364
     },
     {
         "result_file":"hotpot_webarena_results_rft.jsonl",
@@ -82,10 +82,10 @@
         "dataset":"hotpot",
         "dataset_path":"benchmark\/hotpot\/validation-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":11,
-        "rule_accuracy":"5.50%",
-        "rule_unanswered":179,
-        "rule_avg_steps":7.9090909091
+        "rule_correct":92,
+        "rule_accuracy":"46.00%",
+        "rule_unanswered":57,
+        "rule_avg_steps":3.6413043478
     },
     {
         "result_file":"nq_webarena_results_sft.jsonl",
@@ -93,10 +93,10 @@
         "dataset":"nq",
         "dataset_path":"benchmark\/nq\/test-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":3,
-        "rule_accuracy":"1.50%",
-        "rule_unanswered":188,
-        "rule_avg_steps":8.3333333333
+        "rule_correct":78,
+        "rule_accuracy":"39.00%",
+        "rule_unanswered":47,
+        "rule_avg_steps":3.1794871795
     },
     {
         "result_file":"2wiki_webarena_results_sft.jsonl",
@@ -104,10 +104,10 @@
         "dataset":"2wiki",
         "dataset_path":"benchmark\/2wiki\/validation-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":7,
-        "rule_accuracy":"3.50%",
-        "rule_unanswered":178,
-        "rule_avg_steps":15.1428571429
+        "rule_correct":91,
+        "rule_accuracy":"45.50%",
+        "rule_unanswered":50,
+        "rule_avg_steps":4.9120879121
     },
     {
         "result_file":"hotpot_webarena_results_sft.jsonl",
@@ -115,10 +115,10 @@
         "dataset":"hotpot",
         "dataset_path":"benchmark\/hotpot\/validation-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":8,
-        "rule_accuracy":"4.00%",
-        "rule_unanswered":171,
-        "rule_avg_steps":11.25
+        "rule_correct":85,
+        "rule_accuracy":"42.50%",
+        "rule_unanswered":59,
+        "rule_avg_steps":3.8823529412
     },
     {
         "result_file":"popqa_webarena_results_rft.jsonl",
@@ -126,9 +126,9 @@
         "dataset":"popqa",
         "dataset_path":"benchmark\/popqa\/test-00000-of-00001.parquet",
         "rule_total":200,
-        "rule_correct":5,
-        "rule_accuracy":"2.50%",
-        "rule_unanswered":191,
-        "rule_avg_steps":5.2
+        "rule_correct":77,
+        "rule_accuracy":"38.50%",
+        "rule_unanswered":50,
+        "rule_avg_steps":3.7012987013
     }
 ]

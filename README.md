@@ -1,212 +1,212 @@
-# BrowserAgent
-An agent that can interact with browser to complete tasks. Our paper (https://arxiv.org/abs/2510.10666) has been accepted by TMLR 2025 with JC-award to present at ICML/ICLR/NeurIPS conferences.
+# BrowserAgent — Reproduction & Enhancement
 
-### Resources
+**NLP Course Final Project (PhD)**  
+*Reproducing and Improving [BrowserAgent: Building Web Agents with Human-Inspired Web Browsing Actions](https://arxiv.org/abs/2510.10666) — TMLR 2025*
 
-- **Project Page:** https://tiger-ai-lab.github.io/BrowserAgent/
-- **Paper (arXiv):** https://arxiv.org/abs/2510.10666
-- **Models (HF):**
-  - https://huggingface.co/TIGER-Lab/BrowserAgent-SFT
-  - https://huggingface.co/TIGER-Lab/BrowserAgent-RFT
-- **Dataset (HF):** https://huggingface.co/datasets/TIGER-Lab/BrowserAgent-Data
-- **Seed Dataset (HF):** https://huggingface.co/datasets/TIGER-Lab/BrowserAgent-SeedData
+---
 
-### Installation
+## 📌 Project Overview
 
+This repository contains a full, end-to-end reproduction of the **BrowserAgent** paper. BrowserAgent trains small LLMs (Qwen 2.5-7B) as autonomous web browsing agents capable of answering open-domain questions by navigating a local Wikipedia instance. Two training paradigms are reproduced:
 
-#### 1. **Clone this repository and navigate to the folder:**
+- **SFT** — Supervised Fine-Tuning on curated browser trajectories
+- **RFT** — Reinforcement Fine-Tuning using answer-correctness reward signals
+
+Evaluation is performed across six multi-hop QA benchmarks: **2WikiMultiHopQA, HotpotQA, MuSiQue, Bamboogle, NQ, and PopQA**.
+
+📊 **See [RESULTS.md](./RESULTS.md) for reproduced numbers, comparison to paper figures, and improvement results.**
+
+---
+
+## 🚀 Proposed Improvement: Lexical URL Injection ("Hover State" Protocol)
+
+### The Problem
+
+In standard WebArena accessibility trees, the agent receives hyperlinks as bare text labels (e.g., `[42] link 'Director'`). Without destination information, the agent cannot distinguish between a useful entity link and a useless category page — it must *guess and click*, wasting trajectory steps and triggering timeouts.
+
+### The Hypothesis
+
+Human web navigation relies on the **"hover state"** — glancing at the destination URL before deciding to click. We hypothesize that *programmatically injecting the destination URL slug directly into the accessibility tree node* will:
+
+1. Eliminate semantic ambiguity at link-selection time
+2. Reduce exploratory misclicks and wasted steps
+3. Decrease timeout-induced unanswered questions
+4. Increase overall multi-hop accuracy
+
+### The Implementation
+
+The injection is localized to `mini_webarena/browser_processors.py`:
+
+```
+Before: [42] link 'Director'
+After:  [42] link 'Director' (URL: Christopher_Nolan)
+```
+
+- `extract_clean_url()` — maps raw Kiwix/Wikipedia hrefs to clean terminal article slugs
+- `parse_accessibility_tree()` — annotates all `link` role nodes with their destination URL
+- Single-pass CDP call for href extraction — avoids per-node performance bottlenecks
+
+---
+
+## 🛠️ Frictionless Setup & Reproducibility
+
+> **Key design decision for frictionless evaluation:** The time-intensive trajectory generation (LLM inference + browser interaction) has already been run and saved as `.jsonl` artifacts in `./results/`. You **do not** need to run the full agent pipeline to reproduce the tables — just run the evaluation script over the saved trajectories.
+
+### Step 1 — Clone & Install
+
 ```bash
-git clone https://github.com/TIGER-AI-Lab/BrowserAgent.git
+git clone <your-repo-url>
 cd BrowserAgent
-```
-
-
-**Install the inference package:**
-```bash
-conda create -n browseragent python=3.10.12
+conda create -n browseragent python=3.10 -y
 conda activate browseragent
-pip install -e .
-cd verl-tool
-pip install -e .
-pip install -e verl
-pip install vllm==0.8.4
-pip install --upgrade opentelemetry-api opentelemetry-sdk
-pip install flash-attn --no-build-isolation
-pip install -e ".[acecoder,torl]"
-pip uninstall uvloop
-playwright install
+pip install -r requirements.txt
+playwright install chromium
 ```
 
+### Step 2 — Download Benchmark Data
 
-#### 2. Data preparation
-
-To conduct Web-Information-Seeking Task, download [📊 BrowserAgent-SeedData](https://huggingface.co/datasets/TIGER-Lab/BrowserAgent-SeedData) and place it in the data folder, the final structure should look like this:
+Datasets are stored in the `./benchmark/` directory in Parquet format.  
+Source: [TIGER-Lab/BrowserAgent-SeedData](https://huggingface.co/datasets/TIGER-Lab/BrowserAgent-SeedData)
 
 ```
-benchmark
--- | nq
--- | hotpot
--- | 2wiki
--- | popqa
--- | musique
--- | bamboogle
+benchmark/
+├── 2wiki/validation-00000-of-00001.parquet
+├── hotpot/validation-00000-of-00001.parquet
+├── musique/validation-00000-of-00001.parquet
+├── nq/test-00000-of-00001.parquet
+├── popqa/test-00000-of-00001.parquet
+└── bamboogle/test-00000-of-00001.parquet
 ```
 
-
-#### 3. **Deploy the wiki webpage:**
-
-We adopt the WikiPedia from [WebArena](https://github.com/web-arena-x/webarena/tree/main/environment_docker#wikipedia-website).
-
-To deploy the Wiki webpage locally, run the following Docker command and open http://localhost:22015.
-```bash
-docker run -d --name=wikipedia --volume=<your-path-to-downloaded-folder>/:/data -p 22015:80 ghcr.io/kiwix/kiwix-serve:3.3.0 wikipedia_en_all_maxi_2022-05.zim
-```
-
-For public deployment, see our live example at [tigerai.ca/wiki/.../Landing](http://127.0.0.1:22015/content/wikipedia_en_all_maxi_2022-05/A/User%3AThe_other_Kiwix_guy/Landing) and apply the Nginx template in this repo, updating `proxy_pass` to match your Docker port.
-
-
-```conf
-location = /search {
-    return 301 /wiki/search?$args;
-}
-
-location = /random {
-    return 301 /wiki/random?$args;
-}
-
-location ~ ^/wikipedia_en_all_maxi_2022-05 {
-    return 301 /wiki$request_uri;
-}
-
-
-location /wiki/ {
-    proxy_pass http://localhost:22015/;
-    proxy_buffering off;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-
-    sub_filter_once off;
-
-    sub_filter '<a href="/' '<a href="/wiki/';
-    sub_filter '<link href="/' '<link href="/wiki/';
-    sub_filter '<script src="/' '<script src="/wiki/';
-    sub_filter '<img src="/' '<img src="/wiki/';
-
-    sub_filter 'href="/search/' 'href="/wiki/search/';
-    sub_filter 'href="/random/' 'href="/wiki/random/';
-    sub_filter 'href="/wikipedia_en_all_maxi_2022-05/' 'href="/wiki/wikipedia_en_all_maxi_2022-05/';
-    sub_filter 'action="/search' 'action="/wiki/search';
-    sub_filter 'src="/wikipedia_en_all_maxi_2022-05/' 'src="/wiki/wikipedia_en_all_maxi_2022-05/';
-```
-
-
-#### 4. **SFT and RFT model:**
-
-Download [📊 BroswerAgent-SFT](https://huggingface.co/TIGER-Lab/BrowserAgent-SFT) or [📊 BroswerAgent-RFT](https://huggingface.co/TIGER-Lab/BrowserAgent-RFT), and deploy using vllm.
+### Step 3 — Reproduce All Tables (One Command)
 
 ```bash
-Terminal 1:
+# Regenerate Table 1 from pre-saved SFT/RFT trajectories
+python evaluate_all.py --results-dir ./results --use-llm
+```
+
+This runs **both** the rule-based (`val_answer.py`) and LLM-judge (`val_answer_model_based.py`) evaluators over all 12 result files and outputs `evaluation_summary.csv`.
+
+> **Note:** `--use-llm` requires a running Llama-3.3-70B judge endpoint. To skip LLM evaluation and use rule-based only, omit the flag:
+> ```bash
+> python evaluate_all.py --results-dir ./results
+> ```
+
+---
+
+## 📊 Reproducing the Paper's Tables
+
+The evaluation pipeline is structured so that **each table maps to a single command**:
+
+### Table 1 — Main SFT/RFT Results
+
+```bash
+python evaluate_all.py --results-dir ./results --use-llm --output evaluation_summary.csv
+```
+
+### Table 2 — Proposed Improvement (URL Injection vs. Baseline)
+
+```bash
+python evaluate_all.py --results-dir ./resultsV2 --use-llm --output evaluation_summary_v2.csv
+```
+
+> 📄 Full reproduced numbers with paper comparison: **[RESULTS.md](./RESULTS.md)**
+
+---
+
+## 🖥️ Running the Full Pipeline (Optional)
+
+If you want to regenerate trajectories from scratch rather than using the pre-saved artifacts, the system requires **3 services running in parallel**.
+
+### Prerequisites
+
+- A fine-tuned model checkpoint from HuggingFace:
+  - [TIGER-Lab/BrowserAgent-SFT](https://huggingface.co/TIGER-Lab/BrowserAgent-SFT)
+  - [TIGER-Lab/BrowserAgent-RFT](https://huggingface.co/TIGER-Lab/BrowserAgent-RFT)
+- A local `kiwix-serve` instance of Wikipedia (`wikipedia_en_all_maxi_2022-05.zim`) running on port `22015`
+- An Nginx proxy (config: `custom_nginx.conf`) to replicate WebArena's DOM structure
+
+### Terminal 1 — Deploy the LLM via vLLM (port 5001)
+
+```bash
 conda activate browseragent
-cd BrowserAgent
-bash deploy_vllm.sh /path/to/your/model
+bash deploy_vllm.sh /path/to/BrowserAgent-SFT
 ```
 
-
-
-#### 5. **Data generation and model evaluation:**
-
-(1) For SFT data generation
+### Terminal 2 — Start the Tool / Browser Server (port 30810)
 
 ```bash
-Terminal 2:
 conda activate browseragent
-cd BrowserAgent
 bash verl-tool/examples/train/wikiRL/wikiRL_server.sh
-
-Terminal 3:
-conda activate browseragent
-cd BrowserAgent
-python data_generate.py /path/to/your/output_file /path/to/your/sft_data_path
 ```
 
-Then you can run the following code to convert the generated data into the ms-swift training format.
+### Terminal 3 — Run the Agent
 
 ```bash
 conda activate browseragent
-cd BrowserAgent
-python judge_sft.py /path/to/your/sft_data_path /path/to/your/previous_step_output_file /path/to/your/output_file
-python swift_switch.py /path/to/your/previous_step_output_file /path/to/your/output_file
+# Run on a single benchmark (e.g., NQ test set)
+python run_model.py --data_path benchmark/nq/test-00000-of-00001.parquet
 ```
 
+Results are saved as `*_webarena_results_*.jsonl`. Pass the output directory to `evaluate_all.py` to score them.
 
-(2) For RFT data generation
+---
 
-```bash
-Terminal 2:
-conda activate browseragent
-cd BrowserAgent
-bash verl-tool/examples/train/wikiRL/wikiRL_server.sh
+## 📁 Repository Structure
 
-Terminal 3:
-conda activate browseragent
-cd BrowserAgent
-python data_generate_rft.py /path/to/your/output_file /path/to/your/rft_data_path
+```
+BrowserAgent/
+│
+├── 🔑 Entry Points
+│   ├── run_model.py                 # Main agent evaluation runner
+│   ├── run_model_nomemory.py        # Agent without conversation history
+│   ├── evaluate_all.py              # 🏆 Top-level evaluation script (reproduces all tables)
+│   ├── val_answer.py                # Rule-based evaluator (exact/partial match)
+│   └── val_answer_model_based.py    # LLM-judge evaluator (Llama-3.3-70B)
+│
+├── 📦 mini_webarena/                # Core browser environment & agent
+│   ├── agent.py                     # PromptAgent — LLM → next browser action
+│   ├── browser_env.py               # ScriptBrowserEnv (Playwright/Gymnasium)
+│   ├── browser_processors.py        # ⭐ Accessibility tree parser (URL injection here)
+│   ├── env_worker.py                # WikiQAEnv — Wikipedia Q&A task wrapper
+│   └── ...
+│
+├── 📊 results/                      # Pre-generated SFT/RFT trajectories (Table 1)
+├── 📊 resultsV2/                    # URL-injection trajectories (Table 2)
+├── 📋 benchmark/                    # Benchmark datasets (Parquet)
+│
+├── 🔧 Training Pipeline
+│   ├── data_generate.py             # SFT rollout data generation
+│   ├── data_generate_rft.py         # RFT rollout data generation
+│   ├── judge_sft.py / judge_rft.py  # Trajectory quality filtering
+│   ├── swift_switch.py              # Convert to ms-swift training format
+│   └── verl-tool/                   # VERL RL training framework (submodule)
+│
+├── RESULTS.md                       # 📄 Reproduced numbers & paper comparison
+├── GUIDE.md                         # Detailed project internals guide
+├── requirements.txt                 # Pinned dependencies
+└── README.md                        # This file
 ```
 
-Then you can run the following code to convert the generated data into the ms-swift training format.
+---
 
-```bash
-conda activate browseragent
-cd BrowserAgent
-python judge_rft.py /path/to/your/sft_data_path /path/to/your/previous_step_output_file /path/to/your/output_file
-python swift_switch.py /path/to/your/previous_step_output_file /path/to/your/output_file
-```
+## 🔗 Resources
 
-Alternatively, you can also get our SFT and RFT Dataset via https://huggingface.co/datasets/TIGER-Lab/BrowserAgent-Data
+| Resource | Link |
+|----------|------|
+| 📄 Paper (arXiv) | [arxiv.org/abs/2510.10666](https://arxiv.org/abs/2510.10666) |
+| 🌐 Project Page | [tiger-ai-lab.github.io/BrowserAgent](https://tiger-ai-lab.github.io/BrowserAgent/) |
+| 🤗 SFT Model | [TIGER-Lab/BrowserAgent-SFT](https://huggingface.co/TIGER-Lab/BrowserAgent-SFT) |
+| 🤗 RFT Model | [TIGER-Lab/BrowserAgent-RFT](https://huggingface.co/TIGER-Lab/BrowserAgent-RFT) |
+| 📊 Benchmark Data | [TIGER-Lab/BrowserAgent-SeedData](https://huggingface.co/datasets/TIGER-Lab/BrowserAgent-SeedData) |
 
-(3) For model evaluation
+---
 
-```bash
-Terminal 2:
-conda activate browseragent
-cd BrowserAgent
-bash verl-tool/examples/train/wikiRL/wikiRL_server.sh
+## 🔑 Fixed Seeds & Reproducibility Notes
 
-Terminal 3:
-conda activate browseragent
-cd BrowserAgent
-python run_model.py /path/to/your/benchmark_path
-```
+- **Temperature:** `0.0` for all trajectory generation (deterministic decoding)
+- **Dependencies:** Pinned in `requirements.txt` (Playwright 1.32.1, lxml 5.1.0, etc.)
+- **Environment:** Evaluated against a local `kiwix-serve` Wikipedia instance routed through a local Nginx proxy to replicate the WebArena DOM structure
+- **LLM Judge:** Llama-3.3-70B via UTSA cluster endpoint; minor stochasticity (< 1%) expected
 
-Then you can run the following code to calculate the rule-based accuracy.
-
-```bash
-conda activate browseragent
-cd BrowserAgent
-python val_answer.py --data_path /path/to/your/benchmark_path --gen_file /path/to/your/previous_step_output_file
-```
-
-Then you can run the following code to calculate the model-based accuracy.
-```bash
-conda activate browseragent
-cd BrowserAgent
-python val_answer_model_based.py --data_path /path/to/your/benchmark_path --gen_file /path/to/your/previous_step_output_file --output_file /path/to/your/output_file
-```
-
-
-### Citation
-
-If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
-```bibtex
-@misc{yu2025browseragentbuildingwebagents,
-      title={BrowserAgent: Building Web Agents with Human-Inspired Web Browsing Actions}, 
-      author={Tao Yu and Zhengbo Zhang and Zhiheng Lyu and Junhao Gong and Hongzhu Yi and Xinming Wang and Yuxuan Zhou and Jiabing Yang and Ping Nie and Yan Huang and Wenhu Chen},
-      year={2025},
-      eprint={2510.10666},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2510.10666}, 
-}
-```
+---
