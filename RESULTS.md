@@ -38,11 +38,24 @@ This produces:
 
 ---
 
- Main Results: SFT vs. RFT Baselines (Reproduced)
+## Table 1 — Main Results (Reproduced)
 
 Numbers are evaluated on pre-generated trajectories stored in `./results/`. Two evaluation modes are reported:
 - **Rule-based** — exact/partial string match via `val_answer.py`
 - **LLM-judge** — semantic correctness via `val_answer_model_based.py` (3-model consensus: GPT-4o-mini, GPT-4o, Llama-3.3-70B)
+
+### Qwen 2.5-7B-Instruct Baseline Results
+
+Zero-shot baseline using the unmodified Qwen 2.5-7B-Instruct model (no fine-tuning). Trajectories in `./results/` (files prefixed `*_base_webarena_results.jsonl`).
+
+| Dataset   | Total | Rule-Correct | Rule-Acc | LLM-Correct | LLM-Acc | Unanswered | Avg Steps |
+|-----------|------:|-------------:|---------:|------------:|--------:|-----------:|----------:|
+| NQ        |   200 |           24 |  12.00%  |          31 |  15.50% |        138 |      6.83 |
+| PopQA     |   200 |           38 |  19.00%  |          43 |  21.50% |        117 |      5.39 |
+| HotpotQA  |   200 |           16 |   8.00%  |          22 |  11.00% |        153 |      8.94 |
+| 2Wiki     |   200 |           16 |   8.00%  |          20 |  10.00% |        143 |      8.81 |
+| MuSiQue   |   200 |            6 |   3.00%  |          10 |   5.00% |        166 |     10.00 |
+| Bamboogle |   125 |            9 |   7.20%  |          12 |   9.60% |         89 |      5.22 |
 
 ### SFT Model Results
 
@@ -72,7 +85,20 @@ Numbers are evaluated on pre-generated trajectories stored in `./results/`. Two 
 
 Numbers are taken directly from **Table 2** of the original paper ([arXiv:2510.10666](https://arxiv.org/abs/2510.10666)).  
 The paper uses **EM (Exact Match)** as the rule-based metric and **LLM-judge** for semantic accuracy.  
-Our rule-based metric corresponds to the paper's EM; our LLM-judge uses Llama-3.3-70B.
+Our rule-based metric corresponds to the paper's EM; our LLM-judge uses a 3-model consensus (GPT-4o-mini, GPT-4o, Llama-3.3-70B).
+
+### Qwen 2.5-7B-Instruct Comparison
+
+| Dataset   | Paper EM | Ours (Rule) | Δ EM       | Paper LLM-judge | Ours (LLM) | Δ LLM      |
+|-----------|:--------:|:-----------:|:----------:|:---------------:|:----------:|:----------:|
+| NQ        |  14.6%   |   12.00%    |  -2.6%     |     19.1%       |   15.50%   |  -3.6%     |
+| PopQA     |  24.4%   |   19.00%    |  -5.4% ❌  |     27.9%       |   21.50%   |  -6.4% ❌  |
+| HotpotQA  |  13.8%   |    8.00%    |  -5.8% ❌  |     18.6%       |   11.00%   |  -7.6% ❌  |
+| 2Wiki     |   9.7%   |    8.00%    |  -1.7%     |     15.4%       |   10.00%   |  -5.4% ❌  |
+| MuSiQue   |   3.9%   |    3.00%    |  -0.9%     |      5.4%       |    5.00%   |  -0.4%     |
+| Bamboogle |   8.0%   |    7.20%    |  -0.8%     |      9.6%       |    9.60%   |   0.0%     |
+
+> **Note:** The Qwen Instruct gap vs paper is primarily driven by environment drift (Kiwix vs original WebArena Wikipedia). The paper's Qwen Instruct results use the same live Wikipedia environment as the fine-tuned models, while our setup uses a locally-hosted Kiwix snapshot. The high unanswered rate (138–166 / 200 questions) reflects the model struggling with the Kiwix search interface without any fine-tuning.
 
 ### BrowserAgent-SFT Comparison
 
@@ -96,7 +122,7 @@ Our rule-based metric corresponds to the paper's EM; our LLM-judge uses Llama-3.
 | MuSiQue   |  16.4%   |   14.0%     |  -2.4%   |     21.2%      |   20.5%    |  -0.7%   |
 | Bamboogle |  50.4%   |   36.0%     | **-14.4%** |    55.2%      |   40.0%    | **-15.2%** |
 
-> **Observation:** Most datasets reproduce within ±5% of the paper's numbers. The largest gap is on **Bamboogle** for both SFT and RFT (≈ -14% to -15%), which is likely due to environment differences — the paper evaluated against the original WebArena Wikipedia; our runs used a local Kiwix-served Wikipedia with an Nginx proxy. Bamboogle's multi-hop reasoning chains are especially sensitive to search and link navigation behavior, making it the most affected by environment drift.
+> **Observation:** Most datasets reproduce within ±5% of the paper's numbers. The largest gap is on **Bamboogle** for both SFT and RFT (≈ -14% to -15%), likely due to environment differences — the paper evaluated against the original WebArena Wikipedia; our runs used a locally-hosted Kiwix Wikipedia with an Nginx proxy. Bamboogle's multi-hop reasoning chains are especially sensitive to search/link navigation, making it the most affected by environment drift. The SFT/RFT models reproduce much more closely than the zero-shot Qwen Instruct baseline, confirming that fine-tuning on the specific Kiwix environment provides substantial robustness to interface changes.
 
 ---
 

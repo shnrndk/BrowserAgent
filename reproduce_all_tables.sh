@@ -40,6 +40,15 @@ python evaluate_all.py \
 
 echo ""
 echo "============================================================"
+echo "Table 3: Base Model Performance (./results_base_model/)"
+echo "============================================================"
+python evaluate_all.py \
+    --results-dir ./results_base_model \
+    --output evaluation_summary_base_model.csv \
+    $LLM_FLAG
+
+echo ""
+echo "============================================================"
 echo "✅ All done!"
 echo "  Table 1 → evaluation_summary_baseline.csv"
 echo "  Table 2 → evaluation_summary_novel.csv"
